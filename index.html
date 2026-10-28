@@ -1,0 +1,792 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>垃圾追追追</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#17624b">
+<link rel="icon" href="assets/icon-192.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css">   <!-- 3D 傾斜引擎（BSD）；舊引擎模式用不到但無害 -->
+<style>
+:root{--bg:#f2f5f3;--card:#fff;--ink:#14201c;--mut:#56655f;--ok:#17624b;--okbg:#dcefe7;--warn:#a85a07;--warnbg:#fbead2;--bad:#a62d2d;--badbg:#f8dcdc;--line:#d5dfda;--acc:#17624b;--accbg:#dcefe7}
+@media (prefers-color-scheme:dark){:root{--acc:#5fcf9f;--accbg:#18372d;--bg:#0f1714;--card:#16211d;--ink:#e6efeb;--mut:#9fb0a9;--ok:#5fcf9f;--okbg:#18372d;--warn:#f0b35f;--warnbg:#3b2c12;--bad:#f08a8a;--badbg:#3d1c1c;--line:#2b3a34}}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,"Noto Sans TC","Microsoft JhengHei",sans-serif;display:flex;flex-direction:column}
+#map{flex:1 1 40%;min-height:200px}
+#panel{flex:0 0 auto;max-height:58%;overflow:auto;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px;background:var(--bg)}
+.best{background:var(--card);border:2px solid var(--acc);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.big{font-size:1.9rem;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
+.tag{display:inline-block;font-size:.8rem;font-weight:700;padding:1px 9px;border-radius:99px}
+.ok{background:var(--okbg);color:var(--ok)}.warn{background:var(--warnbg);color:var(--warn)}.bad{background:var(--badbg);color:var(--bad)}
+.row{display:flex;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-height:48px;cursor:pointer}
+.row-ic{flex:0 0 auto;image-rendering:pixelated}
+.row-num{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--bg);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+.row.sel .row-num{background:var(--acc)}
+.map-num{position:absolute;top:-4px;left:-4px;z-index:2;width:16px;height:16px;border-radius:50%;background:var(--ink);color:#fff;font-size:.68rem;font-weight:700;display:flex;align-items:center;justify-content:center;border:1px solid #fff}
+#locbtn{color:#14201c;text-decoration:none;width:34px;height:34px}   /* Leaflet 控制鈕底色永遠是白的，字色不能跟著暗色主題變淺 */
+#locbtn.on{color:#1a73e8}
+#oribtn{color:#14201c;text-decoration:none;width:34px;height:34px;font-weight:700}
+#oribtn.on{color:#1a73e8}
+#pitchbtn{color:#14201c;text-decoration:none;width:34px;height:34px}
+#pitchbtn.on{color:#1a73e8}
+.leaflet-control-rotate{display:none!important}   /* 外掛自帶的旋轉鈕，改用右下角自己的 #oribtn */
+.row.sel{border-color:var(--acc);border-width:2px}
+.row small{color:var(--mut)}
+button{font:inherit;min-height:48px;padding:0 16px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+button.primary{background:var(--acc);color:var(--bg);border-color:var(--acc);font-weight:700}
+.bar{display:flex;gap:8px;flex-wrap:wrap}
+.note{font-size:.82rem;color:var(--mut)}
+#alert{display:none;position:sticky;top:0;z-index:1000;padding:14px 16px;font-size:1.15rem;font-weight:700;line-height:1.35;background:var(--bad);color:#fff}
+#alert.on{display:block}
+#alert.hint{background:var(--warn)}
+#alert small{display:block;font-weight:400;font-size:.85rem;margin-top:2px}
+#alert a{color:#fff}
+
+.game{display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.game b{font-size:1.25rem;font-variant-numeric:tabular-nums}
+.lvl{font-size:.82rem;color:var(--mut)}
+.bg{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:3px}.bg i{display:block;height:100%;background:var(--acc)}
+#toast{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:2000;background:var(--acc);color:var(--bg);padding:14px 16px;border-radius:12px;font-weight:700;font-size:1.1rem;display:none;line-height:1.4}
+#toast.on{display:block}
+.badges{display:flex;gap:6px;flex-wrap:wrap}.badges span{font-size:.78rem;padding:2px 9px;border-radius:99px;background:var(--accbg);color:var(--acc);font-weight:700}
+
+.px{image-rendering:pixelated}
+#board{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:none;flex-direction:column;gap:6px}
+#board.on{display:flex}
+#board .r{display:flex;gap:8px;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}#board .r.me{font-weight:700;color:var(--acc)}
+#board input{font:inherit;min-height:40px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:9em}
+body.ride #board{display:none}
+#gate{position:fixed;inset:0;z-index:5000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center}
+#gate img{width:96px}#gate h1{margin:0;font-size:1.6rem}#gate p{margin:0;color:var(--mut);max-width:34ch}#gate .err{color:var(--bad);font-weight:700}
+#who{font-size:.8rem;color:var(--mut)}
+#modebar button{flex:1}
+#modebar button.on{background:var(--acc);color:var(--bg);border-color:var(--acc);font-weight:700}
+body.ride #game,body.ride #habit,body.ride #list,body.ride #best,body.ride .bar,body.ride #foot{display:none}
+body.ride #nav .ins{font-size:2.2rem}
+body.ride #map{flex:1 1 30%}
+.me{width:30px;height:42px;background-size:240px 42px;image-rendering:pixelated;animation:walk .6s steps(2) infinite}
+@keyframes walk{from{background-position:0 0}to{background-position:-60px 0}}
+@media (prefers-reduced-motion:reduce){.me{animation:none}}
+.habit{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.habit h3{margin:0;font-size:1rem;display:flex;align-items:center;gap:6px}
+.habit .bar button{min-height:44px;font-size:.92rem}
+.stars{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+
+#nav{display:none;background:var(--card);border:2px solid #1a73e8;border-radius:10px;padding:12px 14px;flex-direction:column;gap:6px}
+#nav.on{display:flex}
+#nav .ins{font-size:1.5rem;font-weight:700;line-height:1.25}
+#nav .sub{color:var(--mut);font-size:.9rem}
+button.nav{background:#1a73e8;border-color:#1a73e8;color:#fff;font-weight:700}
+a.gm{text-decoration:none}
+/* 城市主題：只換品牌色 --acc，「趕得上／注意」的綠黃紅語意不動 */
+body[data-city=tainan]{--acc:#b5382a;--accbg:#f8e1dc}
+body[data-city=taipei]{--acc:#1d5fb3;--accbg:#dde9f8}
+body[data-city=newtaipei]{--acc:#b85400;--accbg:#fbe6d0}
+body[data-city=taichung]{--acc:#8a6100;--accbg:#f8ecc4}
+body[data-city=kaohsiung]{--acc:#007488;--accbg:#d3eef2}
+body[data-city=keelung]{--acc:#2f5d7c;--accbg:#dbe7f0}
+body[data-city=yilan]{--acc:#4a7a17;--accbg:#e3efcf}
+@media (prefers-color-scheme:dark){
+body[data-city=tainan]{--acc:#f08a7a;--accbg:#3d1c18}
+body[data-city=taipei]{--acc:#7fb0ee;--accbg:#16273d}
+body[data-city=newtaipei]{--acc:#f0a35f;--accbg:#3b2410}
+body[data-city=taichung]{--acc:#f2c14e;--accbg:#3a2f0c}
+body[data-city=kaohsiung]{--acc:#5fd0e0;--accbg:#0f3238}
+body[data-city=keelung]{--acc:#8fb8d6;--accbg:#18293a}
+body[data-city=yilan]{--acc:#a6d26a;--accbg:#233414}}
+#citybar small{font-weight:400;opacity:.9}
+#cityinfo{flex:0 0 auto;background:var(--accbg);color:var(--ink);border-radius:10px;padding:8px 12px 10px;display:flex;flex-direction:column;gap:4px;overflow:hidden}
+#cityinfo .ct{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--acc)}
+#cityinfo .tl{font-size:.85rem;color:var(--mut)}
+#cityinfo .tip{font-size:.92rem;line-height:1.45}
+#cityinfo .tip small{color:var(--mut)}
+#cityinfo button{min-height:44px;padding:0 16px;font-size:.9rem;align-self:flex-start}
+.road{position:relative;height:30px;border-bottom:2px dashed var(--acc);opacity:.95;overflow:hidden}
+.road .sc{position:absolute;bottom:2px;font-size:1.15rem;line-height:1}
+.road img{position:absolute;bottom:1px;left:-40px;width:34px;image-rendering:pixelated;animation:drive 9s linear infinite}
+@keyframes drive{from{left:-40px}to{left:100%}}
+@media (prefers-reduced-motion:reduce){.road img{animation:none;left:calc(50% - 17px)}}
+
+#panelbar{position:sticky;top:0;z-index:6;display:flex;align-items:center;gap:10px;background:var(--bg);padding-bottom:2px;flex:0 0 auto}
+#panelbar button{min-height:44px;padding:0 14px;font-size:.9rem;flex:0 0 auto}
+#minisum{display:none;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:.95rem}
+body.collapsed #panel>*:not(#panelbar):not(#nav){display:none!important}   /* 收合：只留按鈕列＋導航指示（導航中不能被藏掉） */
+body.collapsed #minisum{display:block}
+body.collapsed #panel{max-height:none;padding-top:6px;padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))}
+</style>
+</head>
+<body>
+<div id="gate"><img class="px" src="assets/truck_r.png" alt=""><h1>垃圾追追追</h1><p id="gate_msg">請先登入。</p><button id="gate_btn" class="primary" type="button" hidden>用 Google 登入</button></div>
+<div id="alert" role="alert"></div>
+<div id="toast" role="status"></div>
+<div id="map" aria-label="地圖"></div>
+<div id="panel">
+  <div id="panelbar"><button id="panelbtn" type="button" aria-expanded="true">▾ 收合選單</button><span id="minisum"></span></div>
+  <div id="nav" aria-live="assertive"></div>
+  <div class="game" id="game"></div>
+  <div id="citybar" hidden style="background:var(--accbg);color:var(--acc);padding:8px 12px;border-radius:8px;font-size:.88rem;font-weight:600;margin-bottom:8px"></div>
+  <div class="best" id="best"><span class="note">正在定位並讀取垃圾車資料…</span></div>
+  <div class="bar" id="modebar" role="group" aria-label="移動方式"><button id="m_moto" type="button">🛵 機車</button><button id="m_foot" type="button">🚶 步行</button></div>
+  <div class="bar">
+    <button id="voice" class="primary" aria-pressed="false">開啟語音</button>
+    <button id="navbtn" class="nav">開始導航</button>
+    <button id="relocate">重新定位</button>
+    <button id="logout" type="button" hidden>登出</button>
+    <button id="boardbtn" type="button" hidden>全台排行榜</button>
+  </div>
+  <div id="board" aria-live="polite"></div>
+  <div id="cityinfo"></div>
+  <div class="habit" id="habit"></div>
+  <div id="list" aria-live="polite"></div>
+  <div class="note" id="foot"></div>
+  <div id="who"></div>
+</div>
+<script>
+/* 地圖引擎：預設 MapLibre（支援 3D 傾斜、BSD）；手機不支援 WebGL、引擎檔載入失敗、或網址帶 ?leaflet=1 → 退回 Leaflet＋leaflet-rotate（舊版，GPL-3.0）。 */
+window.GLMODE=!/[?&]leaflet=1(&|$)/.test(location.search)&&(function(){try{var c=document.createElement('canvas');return !!(c.getContext('webgl2')||c.getContext('webgl'))}catch(e){return false}})();   // 預設 3D 引擎（2026-10-28 楊老師真機確認）；不支援 WebGL 或帶 ?leaflet=1 就用舊引擎
+if(window.GLMODE){document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js"><\/script><script src="mapgl.js"><\/script>');}
+else{document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"><\/script>');}   // leaflet-rotate 0.2.8（GPL-3.0），自行託管；sha256 f90b3c0f…22b6
+</script>
+<script>if(window.GLMODE&&typeof maplibregl==='undefined'){location.replace(location.pathname+(location.search?location.search+'&':'?')+'leaflet=1')}   // 引擎檔沒載入（離線／CDN 失敗）→ 自動改用舊引擎</script>
+
+<script src="sprites.js"></script>
+<script>
+"use strict";
+const FEED='https://soa.tainan.gov.tw/Api/Service/Get/2c8a70d5-06f2-4353-9e92-c40d33bcd969';
+const POLL_MS=120000, WALK_MPS=1.3, BUFFER_S=120, STALE_S=600;
+// 縣市偵測：目前臺南用即時 FEED；臺北用班表預測（無即時車位）。bbox 粗判，之後可擴充其他縣市。
+const TPE_POLY=[[25.20,121.52],[25.17,121.60],[25.12,121.66],[25.06,121.67],[25.02,121.64],[24.97,121.60],[24.96,121.55],[24.99,121.52],[25.01,121.50],[25.04,121.495],[25.08,121.50],[25.10,121.47],[25.14,121.46],[25.18,121.48]];   // 臺北市粗略外框：bbox 會把新北板橋等地也框進來
+function inPoly(lat,lon,P){let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const [yi,xi]=P[i],[yj,xj]=P[j];if((yi>lat)!==(yj>lat)&&lon<(xj-xi)*(lat-yi)/(yj-yi)+xi)c=!c}return c}
+const CITIES=[
+  {id:'keelung',name:'基隆市',mode:'schedule',data:'data/keelung_schedule.json',bbox:[25.07,121.64,25.20,121.82]},   // 要排在臺北前面：兩者在東緣重疊
+  {id:'taipei',name:'臺北市',mode:'schedule',data:'data/taipei_schedule.json',poly:TPE_POLY,bbox:[24.95,121.44,25.21,121.67]},
+  {id:'yilan',name:'宜蘭縣',mode:'schedule',data:'data/yilan_schedule.json',bbox:[24.30,121.25,24.95,122.00]},
+  {id:'newtaipei',name:'新北市',mode:'live',feed:'api/live?city=newtaipei',bbox:[24.67,121.28,25.30,122.02],src:'新北市政府資料開放平臺（經本機伺服器轉發）',
+   norm:j=>j.map(x=>({car:x.car,line:x.lineid,time:x.time,lat:+x.latitude,lon:+x.longitude}))},
+  {id:'taichung',name:'臺中市',mode:'live',feed:'https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=c923ad20-2ec6-43b9-b3ab-54527e99f7bc',bbox:[24.00,120.45,24.45,121.35],src:'臺中市政府資料開放平臺',
+   norm:j=>j.map(x=>({car:x.car,line:x.lineid,time:x.time,lat:+x.Y,lon:+x.X}))},
+  {id:'kaohsiung',name:'高雄市',mode:'live',feed:'https://api.kcg.gov.tw/api/service/Get/aaf4ce4b-4ca8-43de-bfaf-6dc97e89cac0',bbox:[22.45,120.15,22.93,121.05],src:'高雄市政府資料開放平臺',
+   norm:j=>j.data.map(x=>({car:x.car,line:x.linid,time:x.time,lat:+x.y,lon:+x.x}))},
+  {id:'tainan',name:'臺南市',mode:'live',feed:FEED,bbox:[22.88,119.98,23.45,120.65],src:'臺南市環保局開放資料（政府資料開放授權第1版）',
+   norm:j=>j.data.map(x=>({car:x.car,line:x.linid,time:x.time,lat:+x.y,lon:+x.x}))},
+];
+function detectCity(lat,lon){for(const c of CITIES)if(lat>=c.bbox[0]&&lat<=c.bbox[2]&&lon>=c.bbox[1]&&lon<=c.bbox[3]&&(!c.poly||inPoly(lat,lon,c.poly)))return c;return CITIES.find(c=>c.id==='tainan');}
+// 各縣市時間格式不同：'2026-10-27 22:58:06'、'2026/10/27 22:58:06'、'20261027T225515'、ISO；一律當臺灣時間
+function parseTs(s){s=String(s).trim().replace(/\//g,'-');const m=s.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})$/);if(m)s=`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`;return Date.parse(s.replace(' ','T').slice(0,19)+'+08:00')}
+let PULLSTAT={done:false,ok:false};   // 目前城市最近一次讀取的結果：還沒讀完／成功／失敗
+let CITY=null, SCHED=null, schedStops=[];
+const $=id=>document.getElementById(id);
+let MODE=(function(){try{return localStorage.getItem('tt_mode')||'moto'}catch(e){return 'moto'}})(), speedMps=0, holiday=null, me=null, trucks=new Map(), target=null, voiceOn=false, lastSpoken='', lastSpokeAt=0, wake=null;
+const map=L.map('map',{zoomControl:false,rotate:true,bearing:0,touchRotate:false,shiftKeyRotate:false,maxZoom:21,zoomSnap:0.5,zoomDelta:1}).setView([22.99,120.21],12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:21,maxNativeZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+L.control.zoom({position:'bottomright'}).addTo(map);
+const LocCtl=L.Control.extend({options:{position:'bottomright'},onAdd(){const d=L.DomUtil.create('div','leaflet-bar');
+  d.innerHTML=`<a href="#" id="locbtn" role="button" aria-label="回到目前位置" title="回到目前位置" style="font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center">◎</a>`;
+  L.DomEvent.disableClickPropagation(d);L.DomEvent.on(d,'click',e=>L.DomEvent.preventDefault(e));return d}});
+new LocCtl().addTo(map);
+const OriCtl=L.Control.extend({options:{position:'bottomright'},onAdd(){const d=L.DomUtil.create('div','leaflet-bar');
+  d.innerHTML=`<a href="#" id="oribtn" role="button" style="font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center"></a>`;
+  L.DomEvent.disableClickPropagation(d);L.DomEvent.on(d,'click',e=>L.DomEvent.preventDefault(e));return d}});
+new OriCtl().addTo(map);
+if(typeof map.setPitch==='function'){   // 只有 MapLibre 引擎才有傾斜；舊引擎不顯示這顆鈕
+  const PitchCtl=L.Control.extend({options:{position:'bottomright'},onAdd(){const d=L.DomUtil.create('div','leaflet-bar');
+    d.innerHTML=`<a href="#" id="pitchbtn" role="button" aria-label="切換平面或 3D 傾斜視角" style="font-size:13px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center"></a>`;
+    L.DomEvent.disableClickPropagation(d);L.DomEvent.on(d,'click',e=>L.DomEvent.preventDefault(e));return d}});
+  new PitchCtl().addTo(map);
+  let PITCH=(function(){try{return localStorage.getItem('tt_pitch')==='3d'}catch(e){return false}})();
+  const showPitch=()=>{const b=$('pitchbtn');b.textContent=PITCH?'3D':'2D';b.title=PITCH?'目前：3D 傾斜視角（點一下改平面）':'目前：平面（點一下改 3D 傾斜）';b.classList.toggle('on',PITCH)};
+  $('pitchbtn').onclick=()=>{PITCH=!PITCH;try{localStorage.setItem('tt_pitch',PITCH?'3d':'flat')}catch(e){}map.setPitch(PITCH?55:0);showPitch()};
+  showPitch(); if(PITCH)map.setPitch(55);
+}
+let meMarker=null; const markers=new Map();
+
+const rad=d=>d*Math.PI/180;
+const travelS=d=>MODE==='moto'?d*1.35/6:d/WALK_MPS;   // 機車：繞路 1.35 倍、均速約 22 km/h（市區含紅燈）；步行 1.3 m/s
+const verb=()=>MODE==='moto'?'騎過去':'走過去';
+function dist(a,b,c,d){const R=6371000,dl=rad(c-a),dn=rad(d-b);const x=Math.sin(dl/2)**2+Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
+function fmtT(s){s=Math.round(s);return s<60?s+' 秒':Math.round(s/60)+' 分鐘'}
+function fmtD(m){return m<1000?Math.round(m)+' 公尺':(m/1000).toFixed(1)+' 公里'}
+
+async function pull(){
+  if(CITY&&CITY.mode==='schedule'){pulled=true;return}
+  const c=CITY&&CITY.feed?CITY:CITIES.find(x=>x.id==='tainan');
+  if(window.NO_LIVE&&window.NO_LIVE.includes(c.id)){   // 公開版：該縣市的資料來源不允許網頁直連（沒有 CORS），要靠桌機代抓，公開版沒有
+    PULLSTAT={done:true,ok:false,msg:'公開版暫時沒有'+c.name+'的即時定位（資料來源不開放網頁直連）；用自用版可以看。'};
+    $('foot').textContent=PULLSTAT.msg;pulled=true;updateCityBar();render();return}
+  try{
+    const r=await fetch(c.feed,{cache:'no-store'}); const j=c.norm(await r.json()); const now=Date.now();
+    if(CITY&&CITY.feed&&CITY.id!==c.id)return;   // 等待期間已換城市，丟掉這批
+    for(const t of j){
+      const lat=t.lat,lon=t.lon,ts=parseTs(t.time);
+      if(!isFinite(lat)||!isFinite(lon)||!isFinite(ts))continue;
+      if(now-ts>3*3600e3)continue;   // 3 小時沒回報＝不是出勤中的車（臺中來源含一年前的舊資料）
+      const o=trucks.get(t.car)||{car:t.car,trail:[]};
+      const last=o.trail[o.trail.length-1];
+      if(!last||last.ts!==ts) o.trail.push({lat,lon,ts}); if(o.trail.length>8)o.trail.shift();
+      o.lat=lat;o.lon=lon;o.ts=ts;o.line=t.line;o.fetched=now;trucks.set(t.car,o);
+    }
+    for(const [k,v] of trucks) if(now-v.fetched>180000) trucks.delete(k);   // 這輪沒再出現＝已下班
+    PULLSTAT={done:true,ok:true};
+    if(CITY&&CITY.mode==='live'&&Date.now()-PASSAT>20*60e3)loadPass(CITY);   // 索引桌機每 15 分鐘更新，手機端 20 分鐘以上才重抓
+    $('foot').textContent='資料來源：'+c.src+'。最近讀取 '+new Date().toLocaleTimeString('zh-TW')+'。來源約每 5 分鐘更新一批，車的位置通常已是約 5 分鐘前（導航用的是預測位置）。';
+  }catch(e){ PULLSTAT={done:true,ok:false}; $('foot').textContent='讀取失敗，稍後自動重試（'+e.message+'）'; }
+  pulled=true;trailDirty=true;
+  updateCityBar();
+  render();
+}
+// 手機鎖屏或切到背景時瀏覽器會暫停計時器；切回畫面（或網路恢復）就立刻重抓，不要等下一個輪詢
+let lastPullAt=0;
+const _pull=pull; pull=async function(){lastPullAt=Date.now();return _pull()};
+function refreshNow(){if(pulled&&Date.now()-lastPullAt>15000)pull()}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshNow()});
+window.addEventListener('online',refreshNow); window.addEventListener('focus',refreshNow);
+// 來源每 5 分鐘一批（量測：批次時間戳約 :x4:58，約 40 秒後才公開）。對準每 5 分鐘整點後 50 秒抓；沒出現新批次就每 15 秒再試，最多 4 次
+const maxTs=()=>{let m=0;for(const t of trucks.values())if(t.ts>m)m=t.ts;return m};
+async function pullFresh(){const before=maxTs();await pull();for(let i=0;i<4&&maxTs()<=before;i++){await new Promise(r=>setTimeout(r,15000));await pull()}}
+function schedulePull(){const P=300000,next=Math.ceil((Date.now()-50000)/P)*P+50000;
+  setTimeout(async()=>{try{await pullFresh()}finally{schedulePull()}},Math.max(5000,next-Date.now()))}
+
+// 以最近兩個不同回報點估速度與朝向；回傳靠近我的速度（公尺/秒，正＝靠近）
+function closing(t){
+  const a=t.trail; if(a.length<2||!me) return null;
+  const p=a[a.length-2],q=a[a.length-1],dt=(q.ts-p.ts)/1000; if(dt<=0) return null;
+  const d0=dist(p.lat,p.lon,me.lat,me.lon),d1=dist(q.lat,q.lon,me.lat,me.lon);
+  return (d0-d1)/dt;
+}
+function assess(t){
+  const d=dist(t.lat,t.lon,me.lat,me.lon), age=(Date.now()-t.ts)/1000, c=closing(t);
+  const walk=travelS(d);                       // 依模式估算到達時間（導航開始後以實際路線為準）
+  const eta=c&&c>0.8?d/c:null;                 // 車以目前速度靠近的預估時間
+  let verdict,cls;
+  if(age>STALE_S){verdict='資料已 '+fmtT(age)+' 沒更新，僅供參考';cls='bad';}
+  else if(eta==null){verdict='車沒有明顯靠近，先別出發';cls='warn';}
+  else if(eta>walk+BUFFER_S){verdict='不用急，約 '+fmtT(eta-walk-BUFFER_S)+' 後出發';cls='ok';}
+  else if(eta>walk){verdict='現在就出發';cls='ok';}
+  else{verdict='可能來不及，建議看下一台';cls='bad';}
+  // 分數：越小越好。趕得上優先，其次距離；資料過期重罰。
+  const catchable=eta!=null&&eta>walk*0.9;
+  const score=d+(catchable?0:3000)+(age>STALE_S?20000:0);
+  return {t,d,age,eta,walk,verdict,cls,score};
+}
+
+// ===== 遊戲化：點數只存在這支手機（localStorage），不上傳位置 =====
+const LEVELS=[[0,'路人'],[30,'垃圾袋新手'],[100,'追車學徒'],[250,'清運偵探'],[500,'垃圾車之友'],[1000,'南臺南追車王']];
+const CATCH_M=40;                                   // 與車回報位置相距 40 公尺內，算「追到了」
+let G={points:0,streak:0,total:0,nick:'',lastDay:'',badges:[],claimed:{},log:[]};
+try{const s=localStorage.getItem('tt_game');if(s)G=Object.assign(G,JSON.parse(s))}catch(e){}
+const saveG=()=>{try{localStorage.setItem('tt_game',JSON.stringify(G))}catch(e){}};
+const today=()=>new Date(Date.now()+8*3600e3).toISOString().slice(0,10);
+function lvl(p){let i=0;for(let k=0;k<LEVELS.length;k++)if(p>=LEVELS[k][0])i=k;const nx=LEVELS[i+1];return {name:LEVELS[i][1],next:nx,frac:nx?(p-LEVELS[i][0])/(nx[0]-LEVELS[i][0]):1}}
+function renderGame(){const l=lvl(G.points);
+  $('game').innerHTML=`<div style="flex:1"><div><img class="px" src="${SPR.star}" width="18" alt=""> <b>${G.points}</b> 點　<span class="lvl">${l.name}${l.next?'・再 '+(l.next[0]-G.points)+' 點升「'+l.next[1]+'」':'・已達最高等級'}</span></div><div class="bg"><i style="width:${Math.round(l.frac*100)}%"></i></div></div>
+   <div style="text-align:right"><div class="lvl">連續</div><b>${G.streak}</b> 天</div>`+(G.badges.length?'':'')}
+let pendingToast=null;
+function toast(msg){if(document.body.classList.contains('ride')){pendingToast=msg;return}const el=$('toast');el.textContent=msg;el.className='on';clearTimeout(toast.t);toast.t=setTimeout(()=>el.className='',5000)}
+function award(car,since){
+  const d=today(); if(G.claimed[car]===d) return;  // 同一台車一天只算一次
+  G.claimed[car]=d;
+  let pts=10,notes=['追到了 +10'];
+  if(since){const used=(Date.now()-since)/1000; if(used<=240){pts+=5;notes.push('提早出門、從容趕上 +5')}}
+  if(G.lastDay!==d){const y=new Date(Date.now()+8*3600e3-864e5).toISOString().slice(0,10);G.streak=(G.lastDay===y)?G.streak+1:1;G.lastDay=d;
+    const b=Math.min(G.streak,7)*2;pts+=b;notes.push('連續第 '+G.streak+' 天 +'+b)}
+  const before=lvl(G.points).name; G.points+=pts; G.total=(G.total||0)+1; G.log.push({car,d,pts,t:Date.now()});recordHabit(car,(trucks.get(car)||{}).line); if(G.log.length>200)G.log.shift();
+  const bd=[[G.log.length>=1,'第一次追到'],[G.streak>=3,'連續三天'],[G.streak>=7,'連續七天'],[G.log.length>=10,'十次達人']];
+  for(const [ok,n] of bd) if(ok&&!G.badges.includes(n)){G.badges.push(n);notes.push('徽章「'+n+'」')}
+  const after=lvl(G.points).name; if(after!==before) notes.push('升級「'+after+'」');
+  saveG(); 
+renderGame(); renderHabit(); pushScore(); toast('🎉 +'+pts+' 點　'+notes.join('・')+'　（走路請看路，別邊走邊看手機）');
+  if(voiceOn&&'speechSynthesis' in window){const u=new SpeechSynthesisUtterance('追到了，加'+pts+'點');u.lang='zh-TW';speechSynthesis.speak(u)}
+}
+let targetSince=Date.now();
+function checkCatch(rows){
+  if(!me) return;
+  for(const r of rows){ if(r.age<STALE_S && r.d<=CATCH_M) award(r.t.car,(r.t.car===target)?targetSince:0) }
+}
+
+// ===== 習慣系統與行事曆：記下每次追到的時間，學出「你平常幾點倒」，並提醒 =====
+const DOW=['日','一','二','三','四','五','六'], LEAD_MIN=8;          // 預設提前 8 分鐘出門
+const nowTW=()=>new Date(Date.now()+8*3600e3);
+const minOf=d=>d.getUTCHours()*60+d.getUTCMinutes();
+const hhmm=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+function recordHabit(car,line){const d=nowTW();(G.hist=G.hist||[]).push({dow:d.getUTCDay(),min:minOf(d),car,line,day:today()});if(G.hist.length>300)G.hist.shift();saveG()}
+function habitFor(dow){const a=(G.hist||[]).filter(x=>x.dow===dow).map(x=>x.min).sort((x,y)=>x-y);
+  if(!a.length) return null; const med=a[Math.floor(a.length/2)]; const spread=a.length>1?(a[a.length-1]-a[0]):0;
+  return {n:a.length,med,spread,suggest:Math.max(0,med-LEAD_MIN)}}
+function gcalLink(dow,m,rm){const d=nowTW();const ymd=d.toISOString().slice(0,10).replace(/-/g,'');
+  const diff=(dow-d.getUTCDay()+7)%7;const dt=new Date(d.getTime()+diff*864e5).toISOString().slice(0,10).replace(/-/g,'');
+  const s=dt+'T'+hhmm(m).replace(':','')+'00',e=dt+'T'+hhmm(m+15).replace(':','')+'00';
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent('出門倒垃圾')+'&dates='+s+'/'+e+'&ctz=Asia/Taipei&recur='+encodeURIComponent('RRULE:FREQ=WEEKLY;BYDAY='+['SU','MO','TU','WE','TH','FR','SA'][dow])+'&details='+encodeURIComponent('依你的習慣自動建議（垃圾追追追）')}
+function makeICS(){const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//tainan-trash-chaser//TW'];
+  for(let dow=0;dow<7;dow++){const h=habitFor(dow);if(!h)continue;const d=nowTW(),diff=(dow-d.getUTCDay()+7)%7,
+    day=new Date(d.getTime()+diff*864e5).toISOString().slice(0,10).replace(/-/g,'');
+    lines.push('BEGIN:VEVENT','UID:trash-'+dow+'@tainan-trash-chaser','DTSTAMP:'+day+'T000000Z','DTSTART;TZID=Asia/Taipei:'+day+'T'+hhmm(h.suggest).replace(':','')+'00',
+      'DURATION:PT15M','RRULE:FREQ=WEEKLY;BYDAY='+['SU','MO','TU','WE','TH','FR','SA'][dow],'SUMMARY:出門倒垃圾','BEGIN:VALARM','TRIGGER:-PT5M','ACTION:DISPLAY','DESCRIPTION:出門倒垃圾','END:VALARM','END:VEVENT')}
+  lines.push('END:VCALENDAR');return lines.join('\r\n')}
+function renderHabit(){
+  const d=nowTW(),dow=d.getUTCDay(),h=habitFor(dow),n=(G.hist||[]).length;
+  let body;
+  if(!h){body=`<div class="note">還沒有「週${DOW[dow]}」的紀錄。追到垃圾車幾次之後，這裡會學出你平常幾點倒垃圾，並提醒你。（目前共 ${n} 筆）</div>`}
+  else{body=`<div>你平常週${DOW[dow]}約 <b>${hhmm(h.med)}</b> 倒垃圾（${h.n} 次紀錄${h.spread>30?'，時間差異較大':''}）。<br>建議 <b>${hhmm(h.suggest)}</b> 出門。</div>
+    <div class="bar"><a href="${gcalLink(dow,h.suggest)}" target="_blank" rel="noopener"><button type="button">加到 Google 行事曆（每週）</button></a><button type="button" id="ics">下載 .ics（含提醒）</button><button type="button" id="notif">開啟通知</button></div>`}
+  $('habit').innerHTML=`<h3><img class="px" src="${SPR.house}" width="22" alt=""> 倒垃圾習慣</h3>`+body;
+  const ic=$('ics'); if(ic) ic.onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([makeICS()],{type:'text/calendar'}));a.download='倒垃圾提醒.ics';a.click()};
+  const nb=$('notif'); if(nb) nb.onclick=async()=>{try{const r=await Notification.requestPermission();toast(r==='granted'?'已開啟通知（頁面開著時會提醒；要關著也提醒，請加到行事曆）':'沒有開啟通知')}catch(e){toast('這個瀏覽器不支援通知')}};
+}
+function reminderTick(){
+  const d=nowTW(),dow=d.getUTCDay(),h=habitFor(dow); if(!h||h.n<2) return;           // 至少兩次紀錄才提醒
+  const m=minOf(d),key='rem_'+today(); if(G[key]) return;
+  if(m>=h.suggest&&m<=h.suggest+10){G[key]=1;saveG();
+    const msg='該出門倒垃圾了（你平常 '+hhmm(h.med)+'）';toast('⏰ '+msg);
+    if(voiceOn&&'speechSynthesis' in window){const u=new SpeechSynthesisUtterance(msg);u.lang='zh-TW';speechSynthesis.speak(u)}
+    try{if(Notification.permission==='granted')new Notification('垃圾追追追',{body:msg})}catch(e){}}
+}
+
+// ===== 導航：步行路線（OSM 德國站 foot）＋預測攔截點＋逐向語音；不需要任何金鑰 =====
+const ROUTE='https://routing.openstreetmap.de/routed-foot/route/v1/foot/';
+const NAV={on:false,dest:null,route:null,step:0,at:0,from:null,poly:null,flag:null,said:{},err:''};
+const MODS={'left':'左轉','right':'右轉','slight left':'稍微左轉','slight right':'稍微右轉','sharp left':'向左急轉','sharp right':'向右急轉','straight':'直行','uturn':'迴轉'};
+function vel(tk){const a=tk.trail;if(a.length<2)return {v:0,dx:0,dy:0};const p=a[a.length-2],q=a[a.length-1],dt=(q.ts-p.ts)/1000;if(dt<=0)return {v:0,dx:0,dy:0};
+  const m=dist(p.lat,p.lon,q.lat,q.lon);const v=m/dt;return {v,dlat:(q.lat-p.lat)/dt,dlon:(q.lon-p.lon)/dt}}
+// 目的地：車停著＝車的位置；車在開＝沿目前方向往前推 (資料延遲＋我走過去的時間)，最多推 150 秒
+function predictDest(tk,walkS){const w=vel(tk);if(w.v<1.5)return {lat:tk.lat,lon:tk.lon,mode:'停靠中'};
+  const age=(Date.now()-tk.ts)/1000,s=Math.min(age+walkS,150);return {lat:tk.lat+w.dlat*s,lon:tk.lon+w.dlon*s,mode:'預測前方'}}
+function say(s){if(!('speechSynthesis' in window))return;const u=new SpeechSynthesisUtterance(s);u.lang='zh-TW';speechSynthesis.speak(u)}
+function insText(st){const m=st.maneuver,n=st.name?('，'+st.name):'';
+  if(m.type==='arrive')return '抵達目的地附近';if(m.type==='depart')return '出發'+(st.name?'，沿'+st.name+'前進':'');
+  if(m.type.indexOf('roundabout')>=0||m.type==='rotary')return '進入圓環';
+  if(m.type==='turn'||m.type==='end of road'||m.type==='fork'||m.type==='on ramp'||m.type==='off ramp')return (MODS[m.modifier]||'前進')+n;
+  return (MODS[m.modifier]||'直行')+n}
+async function planRoute(tk,reason){
+  if(!me||!tk)return; const rows=assess(tk); const d=predictDest(tk,rows.walk);
+  if(NAV.dest&&reason==='tick'&&dist(NAV.dest.lat,NAV.dest.lon,d.lat,d.lon)<(MODE==='moto'?80:40)&&NAV.route)return;   // 目的地移動不到 40 公尺：不改道（防抖動）
+  NAV.dest=d; NAV.at=Date.now(); NAV.from={lat:me.lat,lon:me.lon};
+  try{NAV.route=MODE==='moto'?await routeMoto(me,d):await routeFoot(me,d);NAV.step=0;NAV.said={};NAV.err='';
+    if(NAV.poly)map.removeLayer(NAV.poly);NAV.poly=L.polyline(NAV.route.geometry.coordinates.map(c=>[c[1],c[0]]),{color:'#1a73e8',weight:6,opacity:.85}).addTo(map);
+    if(NAV.flag)map.removeLayer(NAV.flag);NAV.flag=L.marker([d.lat,d.lon],{icon:L.divIcon({className:'',html:`<img class="px" src="${SPR.sign}" width="30" alt="">`,iconSize:[30,36],iconAnchor:[15,34]})}).addTo(map);
+    if(reason==='switch'&&voiceOn)say('改追'+tk.car);
+  }catch(e){NAV.err='路線服務暫時連不上，請改用下方 Google 地圖（'+e.message+'）';NAV.route=null}
+  navRender(tk);
+}
+
+function decodePoly6(s){let i=0,lat=0,lon=0,out=[];while(i<s.length){let b,sh=0,r=0;do{b=s.charCodeAt(i++)-63;r|=(b&31)<<sh;sh+=5}while(b>=32);lat+=(r&1)?~(r>>1):(r>>1);
+  sh=0;r=0;do{b=s.charCodeAt(i++)-63;r|=(b&31)<<sh;sh+=5}while(b>=32);lon+=(r&1)?~(r>>1):(r>>1);out.push([lon/1e6,lat/1e6])}return out}
+const VT={1:['depart'],2:['depart'],3:['depart'],4:['arrive'],5:['arrive'],6:['arrive'],8:['continue','straight'],7:['continue','straight'],22:['continue','straight'],17:['continue','straight'],
+  9:['turn','slight right'],10:['turn','right'],11:['turn','sharp right'],12:['turn','uturn'],13:['turn','uturn'],14:['turn','sharp left'],15:['turn','left'],16:['turn','slight left'],
+  18:['turn','right'],19:['turn','left'],20:['turn','slight right'],21:['turn','slight left'],23:['continue','slight right'],24:['continue','slight left'],25:['continue','straight'],26:['roundabout'],27:['continue','straight']};
+async function routeMoto(from,to){
+  const req={locations:[{lat:from.lat,lon:from.lon},{lat:to.lat,lon:to.lon}],costing:'motor_scooter',costing_options:{motor_scooter:{use_highways:0.0}},directions_options:{units:'kilometers'}};
+  const r=await fetch('https://valhalla1.openstreetmap.de/route?json='+encodeURIComponent(JSON.stringify(req)));const j=await r.json();
+  if(!j.trip||j.trip.status!==0)throw new Error((j.error||'無路線'));
+  const shape=decodePoly6(j.trip.legs[0].shape);
+  const steps=j.trip.legs[0].maneuvers.map(m=>{const v=VT[m.type]||['continue','straight'];const loc=shape[Math.min(m.begin_shape_index,shape.length-1)];
+    return {maneuver:{type:v[0],modifier:v[1],location:loc},name:(m.street_names&&m.street_names[0])||'',distance:m.length*1000}});
+  return {distance:j.trip.summary.length*1000,duration:j.trip.summary.time,geometry:{coordinates:shape},legs:[{steps}]};
+}
+async function routeFoot(from,to){
+  const r=await fetch(ROUTE+from.lon+','+from.lat+';'+to.lon+','+to.lat+'?overview=full&geometries=geojson&steps=true');const j=await r.json();
+  if(j.code!=='Ok')throw new Error(j.code);return j.routes[0];
+}
+function offRoute(){if(!NAV.route||!me)return false;let best=1e9;for(const c of NAV.route.geometry.coordinates){const d=dist(me.lat,me.lon,c[1],c[0]);if(d<best)best=d}return best>(MODE==='moto'?50:40)}
+function navTick(tk){
+  if(!NAV.on||!tk||!me)return;
+  if(!NAV.route||offRoute()||Date.now()-NAV.at>(MODE==='moto'?30000:45000)&&dist(NAV.from.lat,NAV.from.lon,me.lat,me.lon)>(MODE==='moto'?60:25)){planRoute(tk,NAV.route&&offRoute()?'off':'tick');return}
+  const steps=NAV.route.legs[0].steps;
+  while(NAV.step<steps.length-1&&dist(me.lat,me.lon,steps[NAV.step+1].maneuver.location[1],steps[NAV.step+1].maneuver.location[0])<(MODE==='moto'?30:18))NAV.step++;
+  const nx=steps[Math.min(NAV.step+1,steps.length-1)],dn=dist(me.lat,me.lon,nx.maneuver.location[1],nx.maneuver.location[0]);
+  const k=NAV.step+':'; if(voiceOn){const FAR=MODE==='moto'?160:70,NEAR=MODE==='moto'?45:20;if(dn<=FAR&&!NAV.said[k+'a']){NAV.said[k+'a']=1;say('前方'+Math.round(dn/10)*10+'公尺，'+insText(nx))}
+    if(dn<=NEAR&&!NAV.said[k+'b']){NAV.said[k+'b']=1;say(insText(nx))}}
+  navRender(tk,nx,dn)
+}
+function navRender(tk,nx,dn){
+  const el=$('nav');if(!NAV.on){el.className='';return}
+  const gm='https://www.google.com/maps/dir/?api=1&travelmode='+(MODE==='moto'?'two-wheeler':'walking')+'&destination='+(NAV.dest?NAV.dest.lat+','+NAV.dest.lon:'');
+  let main,sub;
+  if(NAV.route){const steps=NAV.route.legs[0].steps,n=nx||steps[Math.min(NAV.step+1,steps.length-1)];const d=dn!=null?dn:dist(me.lat,me.lon,n.maneuver.location[1],n.maneuver.location[0]);
+    main=`${fmtD(d)}後　${insText(n)}`;sub=`全程剩 ${fmtD(NAV.route.distance)}・約 ${fmtT(NAV.route.duration)}・目的地：${NAV.dest.mode}（${tk.car}）`}
+  else{main='路線規劃中…';sub=NAV.err||''}
+  el.className='on';el.innerHTML=`<div class="ins">${main}</div><div class="sub">${sub}</div>${MODE==='moto'?'<div class="sub"><b>騎車請以語音為主，手機固定在手機架上，不要手持操作。</b>機車禁行路段請以現場標誌為準。</div>':''}<a class="gm" href="${gm}" target="_blank" rel="noopener"><button type="button">改用 Google 地圖導航到這個點</button></a>`}
+$('navbtn').onclick=async()=>{
+  if(!NAV.on){const tk=trucks.get(target);if(!tk||!me){toast('還沒有定位或車輛資料');return}
+    NAV.on=true;$('navbtn').textContent='結束導航';voiceOn=true;$('voice').textContent='語音：開';
+    try{wake=await navigator.wakeLock.request('screen')}catch(e){} say('開始導航，追'+tk.car);await planRoute(tk,'start')}
+  else{NAV.on=false;NAV.route=null;NAV.dest=null;$('navbtn').textContent='開始導航';if(NAV.poly){map.removeLayer(NAV.poly);NAV.poly=null}if(NAV.flag){map.removeLayer(NAV.flag);NAV.flag=null}
+    try{wake&&wake.release()}catch(e){}speechSynthesis.cancel();navRender()}};
+
+// ===== 全台排行榜：只上傳 暱稱／縣市／點數／次數／連續天數（不含座標、不含時間軌跡）=====
+let pushT=null;
+function pushScore(){if(!window.FS||!window.UID)return;clearTimeout(pushT);pushT=setTimeout(async()=>{
+  try{await FS.collection('scores').doc(UID).set({name:(G.nick||('追車'+UID.slice(0,4))).slice(0,12),county:(window.CUR_COUNTY||'').slice(0,6),
+    points:G.points|0,catches:G.total|0,streak:G.streak|0,updated:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}catch(e){}},1500)}
+async function renderBoard(){const el=$('board');el.className='on';el.innerHTML='<div class="note">讀取排行榜…</div>';
+  try{const s=await FS.collection('scores').orderBy('points','desc').limit(20).get();let i=0,me=-1;const rows=[];
+    s.forEach(d=>{i++;const v=d.data();if(d.id===UID)me=i;rows.push(`<div class="r ${d.id===UID?'me':''}"><span>${i}. ${String(v.name||'').replace(/[<>&]/g,'')}　<small class="note">${String(v.county||'')}</small></span><span>${v.points|0} 點・追到 ${v.catches|0} 次</span></div>`)});
+    el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>全台排行榜（前 20 名）</b><button type="button" id="bclose" style="min-height:36px">關閉</button></div>`+(rows.join('')||'<div class="note">還沒有人上榜。</div>')+
+      `<div class="note">${me>0?'你目前第 '+me+' 名':'你還沒進前 20 名，或還沒追到過'}。排行榜只公開暱稱、縣市與點數，不含位置。</div>
+       <div style="display:flex;gap:8px;align-items:center"><label for="nick" class="note">我的暱稱</label><input id="nick" maxlength="12" value="${(G.nick||'').replace(/"/g,'')}" placeholder="追車${UID.slice(0,4)}"><button type="button" id="nicksave" style="min-height:40px">儲存</button></div>`;
+    $('bclose').onclick=()=>{el.className=''};$('nicksave').onclick=()=>{G.nick=$('nick').value.trim().slice(0,12);saveG();pushScore();toast('暱稱已更新')};
+  }catch(e){el.innerHTML='<div class="note">排行榜讀取失敗（'+(e.code||e.message)+'）。可能是 Firestore 還沒設定或規則未發布。</div><button type="button" id="bclose">關閉</button>';$('bclose').onclick=()=>{el.className=''}}}
+$('boardbtn').onclick=renderBoard;
+const OFFICIAL='https://www.tnepb.gov.tw/';
+async function loadHoliday(){
+  try{const d=new Date(Date.now()+8*3600e3),y=d.getUTCFullYear(),key=d.toISOString().slice(0,10).replace(/-/g,'');
+    const r=await fetch('https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/'+y+'.json');const j=await r.json();
+    const day=j.find(x=>x.date===key); holiday=day&&day.isHoliday?(day.description||'休假日'):null;}catch(e){holiday=null}
+  banner();
+}
+function banner(){
+  const el=$('alert'); const act=[...trucks.values()].filter(t=>Date.now()-t.ts<1800e3);
+  const none=trucks.size>0||pulled ? act.length===0 : false;
+  let html='',hint=false;
+  if(none){html='今天目前沒有垃圾車出勤'+(holiday?'（'+holiday+'）':'')+'<small>可能是休假日或已收班。實際清運安排請以 <a href="'+OFFICIAL+'" target="_blank" rel="noopener">環保局公告</a> 為準。</small>';}
+  else if(holiday){hint=true;html='今天是'+holiday+'，垃圾清運可能異動<small>下面的車是目前有回報的車。出勤安排以 <a href="'+OFFICIAL+'" target="_blank" rel="noopener">環保局公告</a> 為準。</small>';}
+  el.className=html?(hint?'on hint':'on'):'';el.innerHTML=html;
+}
+let pulled=false;
+// ===== 每台車不同顏色＋選定車的軌跡＋選定後縮放到「我＋車」 =====
+const PAL=[['#d9382c',4],['#e07b00',33],['#b8a100',52],['#2e9e46',133],['#00a0a0',180],['#1a6fe0',214],['#7b4fd0',262],['#d9429b',322],['#8fb300',72],['#8c5a3c',20]], SPR_HUE=150;   // [顏色, 色相]；卡車圖主色相 150（綠）
+let carColor=new Map();
+function assignColors(cars){const keep=new Map(),taken=new Set();   // 車留在清單內就維持原色，不會因排名變動而換色
+  for(const c of cars){const i=carColor.get(c);if(i!=null&&!taken.has(i)){keep.set(c,i);taken.add(i)}}
+  for(const c of cars){if(keep.has(c))continue;let i=0;while(taken.has(i)&&i<PAL.length-1)i++;keep.set(c,i);taken.add(i)}
+  carColor=keep}
+const colOf=c=>{const i=carColor.get(c);return i==null?null:PAL[i]};
+const hueOf=c=>{const k=colOf(c);return k?`hue-rotate(${k[1]-SPR_HUE}deg) `:''};
+const trailLayer=L.layerGroup().addTo(map);let trailFor=null,trailHist=[],trailDirty=false,trailColor='';
+async function loadTrail(car){trailFor=car;trailHist=[];
+  try{const r=await fetch('api/trail?city='+(CITY&&CITY.feed?CITY.id:'tainan')+'&car='+encodeURIComponent(car)+'&hours=0.3',{cache:'no-store'});if(r.ok){const j=await r.json();if(trailFor===car)trailHist=j.points||[]}}catch(e){}   // 沒有軌跡服務時，只畫頁面開啟後收到的點
+  drawTrail()}
+function drawTrail(){trailLayer.clearLayers();const o=trucks.get(target);if(!o)return;
+  const m=new Map();for(const p of trailHist)m.set(p[0],p);for(const p of o.trail)m.set(p.ts,[p.ts,p.lat,p.lon]);
+  const a=[...m.values()].sort((x,y)=>x[0]-y[0]).slice(-3);if(a.length<2)return;   // 只留最近 3 點（約 10 分鐘）：夠判斷車往哪走、多快，不要一長串
+  const c=(colOf(target)||['#1a73e8'])[0],ll=a.map(p=>[p[1],p[2]]);trailColor=c;
+  for(let i=1;i<ll.length;i++){const f=i/(ll.length-1);   // 由舊到新逐段畫：愈舊愈淡愈細，最新一段最深最粗，且畫在最上層
+    L.polyline([ll[i-1],ll[i]],{color:'#fff',weight:3+5*f,opacity:.25+.6*f}).addTo(trailLayer);
+    L.polyline([ll[i-1],ll[i]],{color:c,weight:2+3*f,opacity:.2+.75*f}).addTo(trailLayer)}
+  a.forEach((p,i)=>{const last=i===a.length-1;L.circleMarker([p[1],p[2]],{radius:last?5:3,color:'#fff',weight:1,fillColor:c,fillOpacity:last?1:.45+.5*i/a.length}).bindTooltip(new Date(p[0]).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false})).addTo(trailLayer)})}
+function fitBoth(){const o=trucks.get(target);if(!me||!o)return;
+  map.fitBounds(L.latLngBounds([[me.lat,me.lon],[o.lat,o.lon]]),{padding:[56,56],maxZoom:17,animate:true});
+  following=false;$('locbtn').classList.add('on')}   // 縮放後不要被 GPS 拉回去；按「◎」才回到跟隨
+async function loadSchedule(city){
+  if(SCHED&&SCHED.id===city.id)return;
+  try{const r=await fetch(city.data,{cache:'no-store'});SCHED=await r.json();
+    if(SCHED.v===2){   // 精簡格式：字串走對照表、星期用位元遮罩（bit1=週一…bit7=週日，0=每天），展開成原本的 stops
+      const {cars,lines,places}=SCHED;
+      SCHED.stops=SCHED.rows.map(([c,l,p,arr,lat,lon,mk])=>({car:cars[c],line:lines[l],place:places[p],arr,lat,lon,dow:mk?[1,2,3,4,5,6,7].filter(d=>mk>>d&1):[]}));
+      SCHED.rows=null;}
+  }catch(e){SCHED={stops:[]};}
+  SCHED.id=city.id;
+  pulled=true;
+}
+function nowMin(){const d=new Date();return d.getHours()*60+d.getMinutes();}
+const DOWZH=['日','一','二','三','四','五','六','日'];
+// 班表模式：附近（5 公里內）今天什麼時候還有車？沒有的話，今天是不是整天都沒有？下一次是哪天幾點？
+function schedWhen(now,wd,RANGE){
+  const FAR=Math.max(5000,RANGE*1.7), on=(st,w)=>!st.dow||!st.dow.length||st.dow.includes(w);
+  const mine=(SCHED?.stops||[]).map(st=>({st,d:dist(me.lat,me.lon,st.lat,st.lon)})).filter(x=>x.d<=FAR);
+  const today=mine.filter(x=>on(x.st,wd));
+  const up=today.filter(x=>x.st.arr>=now-3).sort((a,b)=>a.st.arr-b.st.arr)[0];
+  if(up)return {kind:'later',x:up};
+  const past=today.filter(x=>x.d<=RANGE).sort((a,b)=>b.st.arr-a.st.arr)[0];
+  if(past)return {kind:'done',x:past};
+  if(today.length)return {kind:'passed_far'};
+  for(let k=1;k<=7;k++){const w=(wd-1+k)%7+1,c=mine.filter(x=>on(x.st,w)).sort((a,b)=>a.st.arr-b.st.arr)[0];if(c)return {kind:'none_today',next:{k,w,x:c}}}
+  return {kind:'none_today',next:null};
+}
+// 班表模式：找附近停靠點、算今天下一班到站、依「趕不趕得上」給建議
+function renderSchedule(){
+  banner(); if(!me){return}
+  const now=nowMin(), RANGE=MODE==='moto'?3000:1500, wd=new Date().getDay()||7;   // 週一=1…週日=7，對應班表 dow
+  const near=(SCHED?.stops||[]).filter(st=>!st.dow||!st.dow.length||st.dow.includes(wd)).map(st=>{
+    const d=dist(me.lat,me.lon,st.lat,st.lon), wait=st.arr-now, walk=travelS(d);
+    return {st,d,wait,walk,catch:wait>=0&&wait*60>=walk-120};   // 到站還沒過、且走過去趕得上（留2分鐘緩衝）
+  }).filter(x=>x.d<=RANGE&&x.wait>=-3).sort((a,b)=>(b.catch-a.catch)||a.wait-b.wait);   // 趕得上的優先，再按最快到站
+  const hhmm=m=>String(Math.floor(m/60)%24).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+  if(!near.length){
+    const w=schedWhen(now,wd,RANGE), note=`<small class="note">📋 ${CITY.name}班表預測（非即時車位），依今天星期過濾；${fmtD(RANGE)}內沒有可追的班次。</small>`;
+    let tag='附近暫時沒有車',big,line,mini;
+    if(w.kind==='later'){big=`今天最近一班 ${hhmm(w.x.st.arr)}`;line=`還有 ${w.x.st.arr-now>=0?(w.x.st.arr-now)+' 分':'幾分鐘'}・${esc(w.x.st.place)}（距你 ${fmtD(w.x.d)}）<br><small class="note">在可追範圍外，現在不用出門；時間接近再看。</small>`;mini=`今天最近一班 ${hhmm(w.x.st.arr)}`}
+    else if(w.kind==='done'){tag='今天的班次都過了';big='今天這一帶沒有車了';line=`最後一班是 ${hhmm(w.x.st.arr)}・${esc(w.x.st.place)}`;mini='今天的班次都過了'}
+    else if(w.kind==='passed_far'){tag='今天的班次都過了';big='今天這一帶沒有車了';line='附近今天的班次都已經過了。';mini='今天的班次都過了'}
+    else{tag='今天沒班次';big='今天沒有垃圾車';mini='今天沒有垃圾車';
+      line=w.next?`下一次：${w.next.k===1?'明天':'週'+DOWZH[w.next.w]} ${hhmm(w.next.x.st.arr)}・${esc(w.next.x.st.place)}（距你 ${fmtD(w.next.x.d)}）`:`班表上，這一帶（${fmtD(Math.max(5000,RANGE*1.7))}內）沒有任何班次。`}
+    $('best').innerHTML=`<span class="tag warn">${tag}</span><div class="big">${big}</div><div>${line}</div>${note}`;
+    setMini(mini);$('list').innerHTML='';for(const [k,m] of markers){map.removeLayer(m);}markers.clear();trailLayer&&trailLayer.clearLayers();return;
+  }
+  const top=near.slice(0,8), cur=near.find(x=>x.st.place===target)||near[0];
+  target=cur.st.place;
+  setMini(`${hhmm(cur.st.arr)} 到・${fmtD(cur.d)}・${cur.catch?'趕得上':'可能來不及'}`);
+  $('best').innerHTML=`<span class="tag ${cur.catch?'ok':'warn'}">${cur.catch?'趕得上':'可能來不及'}</span>
+    <div class="big">${hhmm(cur.st.arr)} 到・${fmtD(cur.d)}</div>
+    <div><b>${esc(cur.st.place)}</b></div>
+    <div class="note">${cur.st.line}・${verb()} ${fmtT(cur.walk)}｜${cur.wait>=0?'還有 '+cur.wait+' 分到站':'已過約 '+(-cur.wait)+' 分'}</div>
+    <small class="note">📋 ${CITY.name}班表預測（非即時車位），依今天星期過濾</small>`;
+  $('list').innerHTML=top.map((x,i)=>{const cc=PAL[i%PAL.length];return `<div class="row ${x.st.place===target?'sel':''}" data-place="${esc(x.st.place)}" style="border-left:6px solid ${cc[0]}">
+    <div class="row-num" style="background:${cc[0]};color:#fff">${i+1}</div>
+    <div style="flex:1;min-width:0"><b>${hhmm(x.st.arr)}</b> <span class="tag ${x.catch?'ok':'warn'}">${x.catch?'趕得上':'來不及'}</span><br><small>${esc(x.st.place)}<br>${x.st.line}・${fmtD(x.d)}</small></div><div>›</div></div>`}).join('');
+  for(const el of document.querySelectorAll('.row'))el.onclick=()=>{target=el.dataset.place;renderSchedule();const x=near.find(y=>y.st.place===target);if(x){following=false;$('locbtn').classList.add('on');map.fitBounds(L.latLngBounds([[me.lat,me.lon],[x.st.lat,x.st.lon]]),{padding:[56,56],maxZoom:17})}};
+  const want=new Map(top.map((x,i)=>[x.st.place,{x,i}]));
+  for(const [k,m] of markers)if(!want.has(k)){map.removeLayer(m);markers.delete(k)}
+  for(const [place,{x,i}] of want){const cc=PAL[i%PAL.length][0];
+    const ic=L.divIcon({className:'',html:`<div style="position:relative"><div class="map-num" style="background:${cc}">${i+1}</div><img class="px" src="${SPR.sign||SPR.truck_r}" width="30" alt=""></div>`,iconSize:[30,34],iconAnchor:[15,32]});
+    let m=markers.get(place);if(!m){m=L.marker([x.st.lat,x.st.lon],{icon:ic}).addTo(map);markers.set(place,m)}else m.setIcon(ic);}
+}
+function esc(s){return String(s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]))}
+function render(){
+  if(CITY&&CITY.mode==='schedule')return renderSchedule();
+  banner();
+  if(!me){return}
+  const rows=[...trucks.values()].map(assess).sort((a,b)=>a.score-b.score);   // 清單與地圖編號：依推薦分數（趕不趕得上優先，其次距離）
+  if(!rows.length){$('best').innerHTML=PULLSTAT.msg?`<span class="tag warn">暫無即時資料</span><div class="big">這個縣市暫無即時定位</div><small class="note">${PULLSTAT.msg}</small>`:`<span class="tag warn">現在沒有車</span><div class="big">現在沒有車在出勤</div><div><b>先別出發，不用追</b></div>${whenLiveHTML()}`;$('list').innerHTML='';setMini('現在沒有出勤中的車');return}
+  checkCatch(rows);
+  const RANGE_M=MODE==='moto'?3000:1500;                                  // 太遠的車不推薦、不編號、不上色、不進清單（機車 3 公里、步行 1.5 公里內才算）
+  const inR=rows.filter(r=>r.d<=RANGE_M), none=!inR.length;
+  const recommended=(inR[0]||rows[0]).t.car;
+  if(none) target=null;                                                   // 附近沒車：不要把遠方的車當成「最推薦」
+  else if(!target||!trucks.has(target)) {target=recommended;targetSince=Date.now()}
+  const cur=none?null:(rows.find(r=>r.t.car===target)||rows[0]);
+  if(none){const nr=[...rows].sort((x,y)=>x.d-y.d)[0];
+    $('best').innerHTML=`<span class="tag warn">附近沒有垃圾車</span>
+    <div class="big">${fmtD(RANGE_M)}內沒有車</div>
+    <div><b>先別出發，不用追</b></div>
+    <small class="note">最近一台在 ${fmtD(nr.d)} 外（${nr.t.car}・最後回報 ${fmtT(nr.age)}前），不在可追的範圍</small>${whenLiveHTML()}${manualPos?'<small class="note"><b>📍 位置是暫代／手動的，GPS 沒有在更新</b>：點一下地圖改成你現在的位置</small>':gpsLine()}`;
+  } else
+  $('best').innerHTML=`<span class="tag ${cur.cls}">${cur.t.car===recommended?'最推薦':'你選的這台'}</span>
+    <div class="big">${fmtD(cur.d)}・${verb()} ${fmtT(cur.walk)}</div>
+    <div>${cur.eta?'預估車到 '+fmtT(cur.eta)+'，':''}<b>${cur.verdict}</b></div>
+    <small class="note">${cur.t.car}・最後回報 ${fmtT(cur.age)}前</small>${manualPos?'<small class="note"><b>📍 位置是暫代／手動的，GPS 沒有在更新</b>：點一下地圖改成你現在的位置</small>':gpsLine()}`;
+  setMini(none?'附近沒有垃圾車':`${cur.t.car===recommended?'最推薦':'選的這台'} ${fmtD(cur.d)}・${verb()} ${fmtT(cur.walk)}`);
+  const top=rows.filter(r=>r.d<=RANGE_M).slice(0,8), rank=new Map(top.map((r,i)=>[r.t.car,i+1]));
+  assignColors([...top.map(r=>r.t.car),...(target&&!top.some(r=>r.t.car===target)?[target]:[])]);
+  if(target){ const tc=(colOf(target)||[''])[0]; if(trailFor!==target)loadTrail(target); else if(trailDirty||tc!==trailColor){trailDirty=false;drawTrail()} }
+  if(!top.length)$('list').innerHTML=`<div class="note" style="padding:10px 4px">${fmtD(RANGE_M)}內沒有垃圾車，所以不編號。最近的一台是 <b>${rows[0].t.car}</b>（${fmtD(rows[0].d)}）。</div>`;
+  else $('list').innerHTML=top.map((r,i)=>{const cc=colOf(r.t.car);return `<div class="row ${r.t.car===target?'sel':''}" data-car="${r.t.car}" style="${cc?'border-left:6px solid '+cc[0]:''}">
+    <div class="row-num" style="${cc?'background:'+cc[0]+';color:#fff':''}">${i+1}</div>
+    <img class="px row-ic" src="${SPR.truck_basic||SPR.truck_r}" width="30" alt="" style="filter:${hueOf(r.t.car)||'none'}">
+    <div style="flex:1;min-width:0"><b>${r.t.car}</b> ${r.t.car===recommended?'<span class="tag ok">推薦</span> ':''}<span class="tag ${r.cls}">${r.cls==='ok'?'趕得上':r.cls==='warn'?'未靠近':'注意'}</span><br><small>${fmtD(r.d)}・${fmtT(r.age)}前回報</small></div><div>›</div></div>`}).join('');
+  for(const el of document.querySelectorAll('.row')) el.onclick=()=>{target=el.dataset.car;targetSince=Date.now();render();fitBoth();if(NAV.on)planRoute(trucks.get(target),'switch');};
+  // 地圖標記（有編號的那幾台顯示編號徽章，方便跟清單對照）
+  for(const r of rows){let m=markers.get(r.t.car);const sel=r.t.car===target,n=rank.get(r.t.car);
+    const w=sel?54:36, cc=colOf(r.t.car), badge=n?`<div class="map-num" style="${cc?'background:'+cc[0]:''}">${n}</div>`:'';
+    const ic=L.divIcon({className:'',html:`<div style="position:relative">${badge}<img class="px" src="${SPR.truck_r}" width="${w}" height="${Math.round(w*10/18)}" style="filter:${hueOf(r.t.car)}drop-shadow(0 0 ${sel?6:2}px ${sel?'#F2C14E':'#000'})" alt=""></div>`,iconSize:[w,Math.round(w*10/18)],iconAnchor:[w/2,w/3]});
+    if(!m){m=L.marker([r.t.lat,r.t.lon],{icon:ic}).addTo(map);markers.set(r.t.car,m)}else{m.setLatLng([r.t.lat,r.t.lon]);m.setIcon(ic)}}
+  for(const [k,m] of markers) if(!trucks.has(k)){map.removeLayer(m);markers.delete(k)}
+  if(cur){speak(cur);navTick(trucks.get(target))}
+}
+function speak(cur){
+  if(!voiceOn||!('speechSynthesis' in window)||NAV.on) return;   // 導航中只唸導航指示
+  const key=cur.t.car+'|'+cur.verdict;   // 距離每秒都在變，不能放進去重依據，否則會一直重念
+  if(key===lastSpoken||Date.now()-lastSpokeAt<30000) return; lastSpoken=key; lastSpokeAt=Date.now();
+  const s=`${cur.t.car}，距離${fmtD(cur.d)}，${cur.verdict}`;
+  const u=new SpeechSynthesisUtterance(s); u.lang='zh-TW'; speechSynthesis.cancel(); speechSynthesis.speak(u);
+}
+$('voice').onclick=async()=>{voiceOn=!voiceOn;$('voice').textContent=voiceOn?'語音：開':'開啟語音';$('voice').setAttribute('aria-pressed',voiceOn);
+  if(voiceOn){lastSpoken='';lastSpokeAt=0;try{wake=await navigator.wakeLock.request('screen')}catch(e){}}else{try{wake&&wake.release()}catch(e){}speechSynthesis.cancel()}};
+// 跟隨模式（像 Google 地圖）：地圖持續置中到「我」；使用者手動拖動地圖後自動關閉，
+// 右下角浮出「回到目前位置」鈕，點了才重新置中並恢復跟隨。
+let following=true;
+function recenter(){if(!me)return;following=true;$('locbtn').classList.remove('on');map.setView([me.lat,me.lon],map.getZoom()<14?16:map.getZoom());applyBearing()}
+// 地圖方向：'heading'＝行進方向朝上（像 Google 地圖導航），'north'＝北方朝上；右下角 #oribtn 切換並記住
+let ORI=(function(){try{return localStorage.getItem('tt_orient')||'heading'}catch(e){return 'heading'}})(), hdg=null, lastFix=null;
+const angDiff=(a,b)=>((a-b+540)%360)-180;
+function bearingDeg(a,b,c,d){const p=Math.PI/180,y=Math.sin((d-b)*p)*Math.cos(c*p),x=Math.cos(a*p)*Math.sin(c*p)-Math.sin(a*p)*Math.cos(c*p)*Math.cos((d-b)*p);return (Math.atan2(y,x)/p+360)%360}
+function updateHeading(lat,lon,sp,gpsHdg){   // 速度夠快才信 GPS 方位；否則用「移動 8 公尺以上」的兩點連線；都沒有就保持上一次，避免停下來時亂轉
+  let raw=null;
+  if(Number.isFinite(gpsHdg)&&sp>=1.0) raw=gpsHdg;
+  else if(lastFix&&dist(lastFix.lat,lastFix.lon,lat,lon)>=8) raw=bearingDeg(lastFix.lat,lastFix.lon,lat,lon);
+  if(!lastFix||dist(lastFix.lat,lastFix.lon,lat,lon)>=8) lastFix={lat,lon};
+  if(raw==null) return;
+  hdg=hdg==null?raw:(hdg+0.35*angDiff(raw,hdg)+360)%360;   // 平滑，避免 GPS 抖動讓地圖左右晃
+}
+function applyBearing(){
+  if(typeof map.setBearing!=='function') return;
+  if(ORI==='north'){if(Math.abs(angDiff(map.getBearing(),0))>0.5)map.setBearing(0);return}
+  if(hdg==null||!following) return;                    // 使用者把地圖拖開時不轉；按「◎」回來才恢復
+  const want=(360-hdg)%360;                            // leaflet-rotate 的 bearing 是地圖本身的旋轉量，行進方向朝上要取負值
+  if(Math.abs(angDiff(map.getBearing(),want))>2)map.setBearing(want);
+}
+function renderOri(){const b=$('oribtn');if(!b)return;const h=ORI==='heading';
+  b.textContent=h?'🧭':'北';b.classList.toggle('on',h);
+  b.title=b.ariaLabel=h?'地圖朝向：跟著行進方向（點一下改成北方朝上）':'地圖朝向：北方朝上（點一下改成跟著行進方向）'}
+$('oribtn').onclick=()=>{ORI=ORI==='heading'?'north':'heading';try{localStorage.setItem('tt_orient',ORI)}catch(e){}renderOri();applyBearing();toast(ORI==='heading'?'地圖會跟著行進方向轉':'地圖固定北方朝上')};
+
+// 下方選單可收合：收合後地圖佔滿畫面，只留一條按鈕列＋一行摘要；記在這支手機（localStorage）
+let COLLAPSED=(function(){try{return localStorage.getItem('tt_collapsed')==='1'}catch(e){return false}})();
+function applyCollapsed(){document.body.classList.toggle('collapsed',COLLAPSED);const b=$('panelbtn');
+  if(b){b.textContent=COLLAPSED?'▴ 展開選單':'▾ 收合選單';b.setAttribute('aria-expanded',String(!COLLAPSED))}
+  try{localStorage.setItem('tt_collapsed',COLLAPSED?'1':'0')}catch(e){}
+  setTimeout(()=>map.invalidateSize(),250)}
+$('panelbtn').onclick=()=>{COLLAPSED=!COLLAPSED;applyCollapsed()};
+function setMini(s){const e=$('minisum');if(e)e.textContent=s||''}
+applyCollapsed();
+renderOri();
+let manualPos=false, gpsAt=0, gpsAcc=0;
+
+// ===== 城市特色（小知識全部附出處；沒查證到的說法一律寫「相傳」或不放） =====
+const THEMES={
+  tainan:{color:'#b5382a',icon:'⛩️',tagline:'府城・古都',scenes:['⛩️','🍜','🏯'],
+    tips:[{t:'2026 年 7 月，臺南有市民把金塊和皮包誤丟進清潔車，關廟區清潔隊通知永康焚化廠，把垃圾倒在平台上搜尋，約 10 分鐘就找回。',s:'自由時報 2026-07-10（已核對原文）'}]},
+  taipei:{color:'#1d5fb3',icon:'🏙️',tagline:'定時定點・聽到音樂就出門',scenes:['🏙️','🚇','🌧️'],
+    tips:[{t:'全台目前只有台北市採定時、定點收垃圾，垃圾車在每個點停靠 10 到 20 分鐘，其他縣市多半只停 2、3 分鐘。',s:'鏡週刊 2020-06（已核對原文，是當時的說法）'},
+          {t:'台北市衛生局長說，規定市民使用專用垃圾袋後，台北家庭垃圾減少了三分之二。',s:'商業周刊 2023-01-09（已核對原文，是官員說法）'},
+          {t:'首爾 1995 年起依量計費。以 1994 年為基準：1995 年垃圾量減少 8%、1996 年減少 11%；回收物占垃圾的比例從 20.5% 升到 29.3%。',s:'Seoul Solution 官方頁面（已核對原文，國外對照）'}]},
+  newtaipei:{color:'#b85400',icon:'🌉',tagline:'人口最多的直轄市',scenes:['🌉','🚌','🌊'],
+    tips:[{t:'林宥嘉的單曲〈垃圾寶貝〉（2023 年），前奏融合了〈少女的祈禱〉和〈給愛麗絲〉兩首垃圾車音樂，詞黃偉文、曲李拾壹。',s:'Marie Claire 2023-09（已核對原文）'}]},
+  taichung:{color:'#8a6100',icon:'☀️',tagline:'中部大城',scenes:['☀️','🥮','🎡'],
+    tips:[{t:'美國費城 2020 年上線 PickupPHL 互動地圖，用垃圾車上的 GPS，每 30 到 60 分鐘更新一次，市民可看車什麼時候經過自家那條街。',s:'費城市府新聞稿 2020-09-22（已核對原文，國外對照）'}]},
+  kaohsiung:{color:'#007488',icon:'⚓',tagline:'港都',scenes:['⚓','🚢','🌴'],
+    tips:[{t:'英國 Brighton & Hove 在垃圾車上裝了設備，市民可即時追蹤收運進度，漏收會由系統自動標出，不用自己通報；市府說據信是全英首創。',s:'Brighton & Hove 市府新聞 2025-12-03（已核對原文，國外對照）'}]},
+  keelung:{color:'#2f5d7c',icon:'🌧️',tagline:'雨港',scenes:['⚓','🌧️','🐟'],
+    tips:[{t:'日本松戶市說，垃圾分類和收運日規定很細，各市差別很大，要在指定那天早上 8:30 前把垃圾放到收集點。基隆的班表也有「回收日」，每條路線不是每天都收。',s:'松戶市官網（2026-05 更新，已核對原文，國外對照）；基隆部分來自市府開放資料'}]},
+  yilan:{color:'#4a7a17',icon:'🏝️',tagline:'蘭陽平原',scenes:['⛰️','🌾','🏝️'],
+    tips:[{t:'宜蘭縣環保局公開了一萬兩千多筆表定停靠點，每個點依星期分開排，所以今天顯示的和明天不一樣。',s:'宜蘭縣環保局開放資料（本專案統計，非新聞）'}]},
+};
+const COMMON=[{t:'台灣垃圾車的音樂由來沒有定論：有人說前衛生署署長許子秋聽女兒練琴覺得好聽，有人說是台灣第一位醫學博士杜聰明的點子，也有人說是德國進口車內建。〈少女的祈禱〉據說是向德國採購的車上原本就配有。',s:'商業周刊 2023-01-09（已核對原文，文中列出多種說法）'},
+  {t:'嘉義市春節期間停收垃圾、改設定點定時垃圾車，車一到民眾就追著跑，網友笑稱「夜半時分，喪屍出征」；報導也提醒車沒停妥就丟很危險。',s:'新頭殼 2021-02-14（已核對原文，是 2021 年春節）'},
+  {t:'彰化市清潔隊把民眾丟棄的玩偶掛在垃圾車和資源回收車上，有民眾寄手寫明信片說看到車經過心情就變好。',s:'聯合新聞網 2026-06-14（已核對原文）'}];
+let NEWS=[];   // data/news.json：每天由 tools/news_updater.py 更新的新聞標題（原標題、不改寫、附原文連結）
+function loadNews(){return fetch('data/news.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{NEWS=(j.items||[]).map(n=>({id:'n'+n.id,t:n.title,s:n.source+'・'+n.date,link:n.link}))}).catch(()=>{})}
+loadNews().then(()=>{if(CITY)renderCityInfo(CITY)});
+// 畫面重新整理（定時、或從背景切回來）時，下方的小資訊一起更新：重抓新聞池／班表更新日／歷史索引，並換下一則小知識（沿用「不重複」邏輯）
+let lastExtras=Date.now();
+function refreshExtras(){lastExtras=Date.now();
+  Promise.all([loadNews(),fetch('data/schedule_meta.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{META=j}).catch(()=>{})]).then(()=>{
+    if(!CITY)return;
+    if(CITY.mode==='live')loadPass(CITY);
+    renderCityInfo(CITY,true);updateCityBar()})}
+setInterval(()=>{if(!document.hidden)refreshExtras()},300000);                                   // 每 5 分鐘（跟資料輪詢同節奏）
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-lastExtras>60000)refreshExtras()});
+window.addEventListener('online',()=>{if(Date.now()-lastExtras>60000)refreshExtras()});
+// 小知識不重複：看過的記在這支手機（localStorage），全部看完才重來；新聞進來的新題目會排在還沒看過的裡面
+function seenSet(){try{return new Set(JSON.parse(localStorage.getItem('tt_tips_seen')||'[]'))}catch(e){return new Set()}}
+function markSeen(id){try{const s=[...seenSet(),id];localStorage.setItem('tt_tips_seen',JSON.stringify(s.slice(-400)))}catch(e){}}
+let curTip=null,curTipCity='';
+function pickTip(c,force){
+  const th=THEMES[c.id]||THEMES.tainan;
+  const all=[...NEWS,...th.tips.map((x,i)=>({...x,id:c.id+i})),...COMMON.map((x,i)=>({...x,id:'c'+i}))];
+  if(!force&&curTip&&curTipCity===c.id&&all.some(x=>x.id===curTip.id))return curTip;
+  const seen=seenSet();let fresh=all.filter(x=>!seen.has(x.id));
+  if(!fresh.length){try{localStorage.removeItem('tt_tips_seen')}catch(e){}fresh=all.filter(x=>!curTip||x.id!==curTip.id)}
+  curTip=fresh[Math.floor(Math.random()*Math.min(fresh.length,3))];curTipCity=c.id;markSeen(curTip.id);return curTip;
+}
+function renderCityInfo(c,force){
+  const th=THEMES[c.id]||THEMES.tainan, el=$('cityinfo'); if(!el)return;
+  document.body.dataset.city=c.id;
+  const m=document.querySelector('meta[name=theme-color]'); if(m)m.content=th.color;
+  const tip=pickTip(c,force);
+  const sc=th.scenes.map((s,i)=>`<span class="sc" style="left:${14+i*30}%">${s}</span>`).join('');
+  el.innerHTML=`<div class="ct"><span>${th.icon}</span><span>${c.name}</span><span class="tl">${th.tagline}</span></div>
+    <div class="road" aria-hidden="true">${sc}<img src="${SPR.truck_r}" alt=""></div>
+    <div class="tip">${esc(tip.t)}<br><small>${tip.link?'新聞':'出處'}：${esc(tip.s)}${tip.link?` ・<a href="${esc(tip.link)}" target="_blank" rel="noopener">看原文</a>`:''}</small></div>
+    <button type="button" id="tipnext">再看一則</button>`;
+  $('tipnext').onclick=()=>renderCityInfo(c,true);
+}
+
+// ===== 即時城市的「平常什麼時候有車」：data/passes_<city>.json 是桌機整理的歷史經過索引（格子×星期×時間）。
+// 整份下載到手機、在本機查自己所在的格子，位置不會傳給任何人。資料還少的時候會直接說「還不夠」，不硬猜。
+let PASS=null,PASSAT=0;
+function loadPass(c){PASS=null;if(!c||c.mode!=='live')return;
+  fetch('data/passes_'+c.id+'.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(CITY&&CITY.id===c.id){PASS=j;PASSAT=Date.now();render()}}).catch(()=>{})}
+function liveWhen(now){
+  if(!PASS||!me)return null;
+  const ci=Math.floor(me.lat/PASS.cell),cj=Math.floor(me.lon/PASS.cell),w=String(new Date().getDay()||7),nobs=PASS.nobs_dow[w]||0;
+  const cells=[];for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const e=PASS.cells[(ci+a)+','+(cj+b)];if(e)cells.push(e)}
+  const todayList=[...new Set(cells.flatMap(e=>e.t||[]))].sort((x,y)=>x-y);   // 索引的 t 只含「索引日」當天；索引超過一天沒更新就不顯示
+  const fresh=PASS.today===new Date(Date.now()+8*3600e3).toISOString().slice(0,10);
+  const raw=cells.flatMap(e=>e[w]||[]).sort((x,y)=>x[0]-y[0]), cl=[];
+  for(const r of raw){const l=cl[cl.length-1];if(l&&r[0]-l[0]<=20){if(r[1]>l[1]){l[1]=r[1];l[2]=r[2]}}else cl.push([r[0],r[1],r[2]])}   // 九格合併後再分群（±20 分鐘）
+  const strong=cl.filter(x=>x[1]/Math.max(1,x[2])>=0.5);
+  return {nobs,today:fresh?todayList:[],up:strong.find(x=>x[0]>=now-5)||null,last:[...strong].reverse().find(x=>x[0]<now-5)||null,any:cl.length>0};
+}
+function whenLiveHTML(){
+  const nowM=nowMin(),r=liveWhen(nowM);if(!r)return '';
+  const hh=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'), D='日一二三四五六日'[new Date().getDay()];
+  const out=[];
+  if(r.today.length){const past=r.today.filter(m=>m<=nowM);if(past.length)out.push(`今天 ${hh(past[past.length-1])} 左右有車經過你附近`)}
+  if(r.up)out.push(`平常週${D}約 ${hh(r.up[0])} 會有車經過這一帶（過去 ${r.up[2]} 個週${D}有 ${r.up[1]} 次${r.up[2]<4?'，資料還少，僅供參考':''}）`);
+  else if(r.last)out.push(`平常週${D}這一帶的車大多已經過了（最近一次約 ${hh(r.last[0])}）`);
+  else if(r.nobs===0)out.push(`還沒有週${D}的歷史資料，要再累積約一週才能預測「平常幾點有車」`);
+  else if(!r.any&&r.nobs>=2)out.push(`過去 ${r.nobs} 個週${D}，這一帶都沒有車經過：<b>今天很可能沒有垃圾車</b>`);
+  else if(!r.any)out.push(`過去 ${r.nobs} 個週${D}這一帶沒有車經過（資料太少，還不能確定今天沒車）`);
+  return out.length?'<small class="note">'+out.join('<br>')+'</small>':'';
+}
+let META={};   // data/schedule_meta.json：各縣市班表「更新日」（內容最後變動）與「檢查日」（最後確認過來源）
+fetch('data/schedule_meta.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{META=j;updateCityBar()}).catch(()=>{});
+// 資料日期標註：班表城市標班表更新日；即時城市標「最新一筆定位」的時間，太久沒更新就明說
+function updateCityBar(){const c=CITY,b=$('citybar');if(!c||!b)return;b.hidden=false;
+  if(c.mode==='schedule'){const m=META[c.id]||{};const upd=m.updated||(SCHED&&SCHED.updated)||'未知';
+    b.innerHTML=`📋 ${c.name}：班表預測模式（非即時車位）<br><small>班表資料更新日 ${upd}${m.checked?`・${m.checked.slice(5)} 檢查過${m.status==='failed'?'（最近一次更新失敗，沿用舊班表）':m.status==='unchanged'?'，沒有新版':''}`:''}</small>`;return}
+  const ts=maxTs();
+  if(!ts){b.innerHTML=`📡 ${c.name}：即時定位<br><small>${!PULLSTAT.done?'讀取中…':PULLSTAT.ok?'來源目前沒有車在回報（可能已收班）':(PULLSTAT.msg||'讀取失敗，稍後自動重試')}</small>`;return}
+  const d=new Date(ts),today=new Date().toDateString()===d.toDateString();
+  const when=(today?'':(d.getMonth()+1)+'/'+d.getDate()+' ')+d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false});
+  const ageS=Math.round((Date.now()-ts)/1000);
+  b.innerHTML=`📡 ${c.name}：即時定位<br><small>最新一筆定位 ${when}（${fmtT(ageS)}前）${ageS>1800?'・來源超過 30 分鐘沒更新，車可能已收班':''}</small>`}
+function onCityChange(c){
+  renderCityInfo(c);
+  if(c.mode==='schedule'){loadSchedule(c).then(()=>{updateCityBar();render()})}
+  else{SCHED=null;trucks.clear();target=null;PULLSTAT={done:false,ok:false};loadPass(c);pull()}
+  updateCityBar();
+}
+const gpsText=()=>`📡 GPS 運作中：精度約 ±${gpsAcc} 公尺，${Math.max(0,Math.round((Date.now()-gpsAt)/1000))} 秒前更新`;
+function gpsLine(){return gpsAt?`<small class="note" id="gpsline">${gpsText()}</small>`:''}
+setInterval(()=>{const e=document.getElementById('gpsline');if(e&&gpsAt)e.textContent=gpsText()},2000);   // 只刷新這一行字，不重畫整個清單
+function setMe(lat,lon,sp,gpsHdg){me={lat,lon};speedMps=sp||0;updateHeading(lat,lon,speedMps,gpsHdg);
+  const c=detectCity(lat,lon); if(c&&(!CITY||CITY.id!==c.id)){CITY=c; onCityChange(c);}
+  if(!meMarker){meMarker=L.marker([lat,lon],{icon:L.divIcon({className:'',html:`<div class="me" style="background-image:url(${SPR.player})"></div>`,iconSize:[30,42],iconAnchor:[15,40]}),zIndexOffset:1000}).addTo(map);map.setView([lat,lon],16)}
+  else{meMarker.setLatLng([lat,lon]);if(following)map.panTo([lat,lon],{animate:true})}
+  applyBearing();render()}
+function locate(){
+  const fallback=why=>{manualPos=true;
+    if(!me){setMe(22.9971,120.2127,0);$('foot').textContent=why+'：先暫用臺南火車站當「我的位置」，請點一下地圖改成你現在的位置（位置只在這支手機上使用，不會上傳）。'}
+    else $('foot').textContent=why+'：請點一下地圖設定你的位置。'};
+  if(!navigator.geolocation){fallback('這個瀏覽器不支援定位');return}
+  navigator.geolocation.watchPosition(p=>{manualPos=false;gpsAt=Date.now();gpsAcc=Math.round(p.coords.accuracy||0);setMe(p.coords.latitude,p.coords.longitude,p.coords.speed,p.coords.heading)},
+    e=>fallback(e&&e.code===1?'定位被拒絕或此網址不允許定位':'暫時抓不到定位'),{enableHighAccuracy:true,maximumAge:5000});
+}
+map.on('click',e=>{if(manualPos)setMe(e.latlng.lat,e.latlng.lng,0)});
+map.on('dragstart',()=>{if(following){following=false;$('locbtn').classList.add('on')}});   // 只有使用者手動拖曳才算「滑開」；程式自己 setView／panTo 不算
+$('locbtn').onclick=recenter;
+
+function setMode(m){MODE=m;try{localStorage.setItem('tt_mode',m)}catch(e){}
+  $('m_moto').className=m==='moto'?'on':'';$('m_foot').className=m==='foot'?'on':'';$('m_moto').setAttribute('aria-pressed',m==='moto');$('m_foot').setAttribute('aria-pressed',m==='foot');
+  NAV.route=null;if(NAV.on)planRoute(trucks.get(target),'switch');render()}
+$('m_moto').onclick=()=>setMode('moto');$('m_foot').onclick=()=>setMode('foot');
+setInterval(()=>{if(pendingToast&&!document.body.classList.contains('ride')){const m=pendingToast;pendingToast=null;toast(m)}
+  const r=MODE==='moto'&&NAV.on&&speedMps>2.5;document.body.classList.toggle('ride',r)},2000);   // 騎行中只留導航畫面
+setMode(MODE); renderGame(); renderHabit(); setInterval(reminderTick,30000); $('relocate').onclick=locate; let started=false; window.startApp=function(){if(started)return;started=true;locate();loadHoliday();pull();schedulePull()};
+</script>
+
+<script src="auth-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+// 登入閘門：Firebase Authentication（Google 登入）＋ 電子郵件白名單（auth-config.js）。
+// 注意：這是前端閘門，擋的是一般使用者；靜態網站的原始碼本身公開，白名單不等於伺服器端防護。
+(function(){
+  const g=$('gate'),msg=$('gate_msg'),btn=$('gate_btn'),out=$('logout'),who=$('who');
+  const cfg=window.FIREBASE_CONFIG,allow=(window.ALLOWED_EMAILS||[]).map(s=>String(s).toLowerCase());
+  const local=['localhost','127.0.0.1'].includes(location.hostname);
+  if(local&&new URLSearchParams(location.search).get('dev')==='1'){g.remove();who.textContent='開發模式（僅限本機，未登入）';window.startApp();return}   // 只在本機開發時略過
+  const unset=!cfg||!cfg.apiKey||/^YOUR|^PASTE/i.test(cfg.apiKey);
+  const tailnet=/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(location.hostname)||/\.ts\.net$/.test(location.hostname);
+  if(tailnet&&new URLSearchParams(location.search).get('dev')==='1'){g.remove();who.textContent='開發模式（Tailscale 私有網路，未登入）';window.startApp();return}   // 只有 Tailscale 私有位址（100.64.0.0/10、*.ts.net）才略過；公開網域不可能是這些位址。Firebase 設好後仍保留：Tailscale 網址不是授權網域，無法登入
+  if(!cfg||!cfg.apiKey||/^YOUR|^PASTE/i.test(cfg.apiKey)||!window.firebase){
+    msg.innerHTML='<span class="err">尚未設定 Firebase 登入</span><br>請在 <code>auth-config.js</code> 填入 Firebase 網頁設定與白名單。';return}
+  firebase.initializeApp(cfg);const auth=firebase.auth();
+  const okUser=u=>u&&u.emailVerified!==false&&allow.includes(String(u.email||'').toLowerCase());
+  auth.onAuthStateChanged(u=>{
+    if(!u){g.hidden=false;g.style.display='flex';btn.hidden=false;out.hidden=true;who.textContent='';msg.textContent='請先登入。';return}
+    if(okUser(u)){g.style.display='none';out.hidden=false;who.textContent='已登入：'+u.email;window.UID=u.uid;try{window.FS=firebase.firestore?firebase.firestore():null}catch(e){window.FS=null}$('boardbtn').hidden=!(window.FS&&window.ENABLE_BOARD);window.startApp();if(window.FS&&window.ENABLE_BOARD)pushScore()}   // 排行榜要 Firestore；這個 Firebase 專案沒開，預設關（auth-config.js 的 ENABLE_BOARD）
+    else{msg.innerHTML='<span class="err">這個帳號沒有使用權限</span><br>'+(u.email||'')+'<br>已自動登出。';btn.hidden=false;auth.signOut()}
+  });
+  btn.onclick=()=>{msg.textContent='開啟 Google 登入…';auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e=>{
+    if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
+    else msg.innerHTML='<span class="err">登入失敗</span>：'+e.code})};
+  out.onclick=()=>{try{speechSynthesis.cancel()}catch(e){}auth.signOut().then(()=>location.reload())};
+})();
+</script>
+</body>
+</html>
