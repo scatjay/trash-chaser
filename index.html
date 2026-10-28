@@ -244,7 +244,7 @@ async function pull(){
     for(const [k,v] of trucks) if(now-v.fetched>180000) trucks.delete(k);   // 這輪沒再出現＝已下班
     PULLSTAT={done:true,ok:true};
     if(CITY&&CITY.mode==='live'&&Date.now()-PASSAT>20*60e3)loadPass(CITY);   // 索引桌機每 15 分鐘更新，手機端 20 分鐘以上才重抓
-    $('foot').textContent='資料來源：'+c.src+'。最近讀取 '+new Date().toLocaleTimeString('zh-TW')+'。來源約每 5 分鐘更新一批，車的位置通常已是約 5 分鐘前（導航用的是預測位置）。';
+    $('foot').textContent='資料來源：'+c.src+'（讀取於 '+new Date().toLocaleTimeString('zh-TW')+'）。來源約每 5 分鐘更新，車位置約是 5 分鐘前，導航用預測位置。';
   }catch(e){ PULLSTAT={done:true,ok:false}; $('foot').textContent='讀取失敗，稍後自動重試（'+e.message+'）'; }
   pulled=true;trailDirty=true;
   updateCityBar();
@@ -341,7 +341,7 @@ function makeICS(){const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//taina
 function renderHabit(){
   const d=nowTW(),dow=d.getUTCDay(),h=habitFor(dow),n=(G.hist||[]).length;
   let body;
-  if(!h){body=`<div class="note">還沒有「週${DOW[dow]}」的紀錄。追到垃圾車幾次之後，這裡會學出你平常幾點倒垃圾，並提醒你。（目前共 ${n} 筆）</div>`}
+  if(!h){body=`<div class="note">週${DOW[dow]}還沒有紀錄。追到車幾次後，這裡會學出你平常幾點倒垃圾並提醒你（目前 ${n} 筆）</div>`}
   else{body=`<div>你平常週${DOW[dow]}約 <b>${hhmm(h.med)}</b> 倒垃圾（${h.n} 次紀錄${h.spread>30?'，時間差異較大':''}）。<br>建議 <b>${hhmm(h.suggest)}</b> 出門。</div>
     <div class="bar"><a href="${gcalLink(dow,h.suggest)}" target="_blank" rel="noopener"><button type="button">加到 Google 行事曆（每週）</button></a><button type="button" id="ics">下載 .ics（含提醒）</button><button type="button" id="notif">開啟通知</button></div>`}
   $('habit').innerHTML=`<h3><img class="px" src="${SPR.house}" width="22" alt=""> 倒垃圾習慣</h3>`+body;
@@ -566,18 +566,18 @@ function render(){
     $('best').innerHTML=`<span class="tag warn">附近沒有垃圾車</span>
     <div class="big">${fmtD(RANGE_M)}內沒有車</div>
     <div><b>先別出發，不用追</b></div>
-    <small class="note">最近一台在 ${fmtD(nr.d)} 外（${nr.t.car}・最後回報 ${fmtT(nr.age)}前），不在可追的範圍</small>${whenLiveHTML()}${manualPos?'<small class="note"><b>📍 位置是暫代／手動的，GPS 沒有在更新</b>：點一下地圖改成你現在的位置</small>':gpsLine()}`;
+    <small class="note">最近一台 ${nr.t.car} 在 ${fmtD(nr.d)}外（${fmtT(nr.age)}前回報），太遠不用追</small>${whenLiveHTML()}${manualPos?'<small class="note"><b>📍 目前是手動位置，沒有跟著 GPS 更新</b>：點地圖設定你的位置</small>':gpsLine()}`;
   } else
   $('best').innerHTML=`<span class="tag ${cur.cls}">${cur.t.car===recommended?'最推薦':'你選的這台'}</span>
     <div class="big">${fmtD(cur.d)}・${verb()} ${fmtT(cur.walk)}</div>
     <div>${cur.eta?'預估車到 '+fmtT(cur.eta)+'，':''}<b>${cur.verdict}</b></div>
-    <small class="note">${cur.t.car}・最後回報 ${fmtT(cur.age)}前</small>${manualPos?'<small class="note"><b>📍 位置是暫代／手動的，GPS 沒有在更新</b>：點一下地圖改成你現在的位置</small>':gpsLine()}`;
+    <small class="note">${cur.t.car}・最後回報 ${fmtT(cur.age)}前</small>${manualPos?'<small class="note"><b>📍 目前是手動位置，沒有跟著 GPS 更新</b>：點地圖設定你的位置</small>':gpsLine()}`;
   setBar(none?{kind:'none'}:{kind:'live'});
   setMini(none?'附近沒有垃圾車':`${cur.t.car===recommended?'最推薦':'選的這台'} ${fmtD(cur.d)}・${verb()} ${fmtT(cur.walk)}`);
   const top=rows.filter(r=>r.d<=RANGE_M).slice(0,8), rank=new Map(top.map((r,i)=>[r.t.car,i+1]));
   assignColors([...top.map(r=>r.t.car),...(target&&!top.some(r=>r.t.car===target)?[target]:[])]);
   if(target){ const tc=(colOf(target)||[''])[0]; if(trailFor!==target)loadTrail(target); else if(trailDirty||tc!==trailColor){trailDirty=false;drawTrail()} }
-  if(!top.length)$('list').innerHTML=`<div class="note" style="padding:10px 4px">${fmtD(RANGE_M)}內沒有垃圾車，所以不編號。最近的一台是 <b>${rows[0].t.car}</b>（${fmtD(rows[0].d)}）。</div>`;
+  if(!top.length)$('list').innerHTML='';
   else $('list').innerHTML=top.map((r,i)=>{const cc=colOf(r.t.car);return `<div class="row ${r.t.car===target?'sel':''}" data-car="${r.t.car}" style="${cc?'border-left:6px solid '+cc[0]:''}">
     <div class="row-num" style="${cc?'background:'+cc[0]+';color:#fff':''}">${i+1}</div>
     <img class="px row-ic" src="${SPR.truck_basic||SPR.truck_r}" width="30" alt="" style="filter:${hueOf(r.t.car)||'none'}">
@@ -633,7 +633,7 @@ let COLLAPSED=(function(){try{return localStorage.getItem('tt_collapsed')==='1'}
 function applyCollapsed(){document.body.classList.toggle('collapsed',COLLAPSED);const b=$('panelbtn');
   if(b){b.textContent=COLLAPSED?'▴ 展開選單':'▾ 收合選單';b.setAttribute('aria-expanded',String(!COLLAPSED))}
   try{localStorage.setItem('tt_collapsed',COLLAPSED?'1':'0')}catch(e){}
-  setTimeout(()=>map.invalidateSize(),250)}
+  setTimeout(()=>{map.invalidateSize();if(following&&me)map.setView([me.lat,me.lon],map.getZoom())},250)}   // 高度變了就重新把「我」放回定位點
 $('panelbtn').onclick=()=>{COLLAPSED=!COLLAPSED;applyCollapsed()};
 function setMini(s){const e=$('minisum');if(e)e.textContent=s||''}
 // 收合列的導航鈕：即時城市＝app 內導航到目前選定／最推薦的車；班表城市＝開 Google 地圖導航到最近一班的停靠點；沒車＝灰掉並由摘要說明今天的狀況
@@ -729,10 +729,10 @@ function whenLiveHTML(){
   const nowM=nowMin(),r=liveWhen(nowM);if(!r)return '';
   const hh=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'), D='日一二三四五六日'[new Date().getDay()];
   const out=[];
-  if(r.today.length){const past=r.today.filter(m=>m<=nowM);if(past.length)out.push(`今天 ${hh(past[past.length-1])} 左右有車經過你附近`)}
+  if(r.today.length){const past=r.today.filter(m=>m<=nowM);if(past.length)out.push(`今天 ${hh(past[past.length-1])} 有車經過這一帶（已過）`)}
   if(r.up)out.push(`平常週${D}約 ${hh(r.up[0])} 會有車經過這一帶（過去 ${r.up[2]} 個週${D}有 ${r.up[1]} 次${r.up[2]<4?'，資料還少，僅供參考':''}）`);
   else if(r.last)out.push(`平常週${D}這一帶的車大多已經過了（最近一次約 ${hh(r.last[0])}）`);
-  else if(r.nobs===0)out.push(`還沒有週${D}的歷史資料，要再累積約一週才能預測「平常幾點有車」`);
+  else if(r.nobs===0)out.push(`週${D}的資料還在累積，約一週後可預測「平常幾點有車」`);
   else if(!r.any&&r.nobs>=2)out.push(`過去 ${r.nobs} 個週${D}，這一帶都沒有車經過：<b>今天很可能沒有垃圾車</b>`);
   else if(!r.any)out.push(`過去 ${r.nobs} 個週${D}這一帶沒有車經過（資料太少，還不能確定今天沒車）`);
   return out.length?'<small class="note">'+out.join('<br>')+'</small>':'';
@@ -758,7 +758,22 @@ function onCityChange(c){
 const gpsText=()=>`📡 GPS 運作中：精度約 ±${gpsAcc} 公尺，${Math.max(0,Math.round((Date.now()-gpsAt)/1000))} 秒前更新`;
 function gpsLine(){return gpsAt?`<small class="note" id="gpsline">${gpsText()}</small>`:''}
 setInterval(()=>{const e=document.getElementById('gpsline');if(e&&gpsAt)e.textContent=gpsText()},2000);   // 只刷新這一行字，不重畫整個清單
-function setMe(lat,lon,sp,gpsHdg){me={lat,lon};speedMps=sp||0;updateHeading(lat,lon,speedMps,gpsHdg);
+// 我的軌跡：畫法比照垃圾車（由舊到新愈來愈深、愈粗，最新一點有圓點）；只存在這支手機的 sessionStorage，不上傳，關掉分頁就清掉
+const myLayer=L.layerGroup().addTo(map);let myTrail=(function(){try{return JSON.parse(sessionStorage.getItem('tt_mytrail')||'[]')}catch(e){return []}})();
+function addMyTrail(lat,lon){
+  if(manualPos||(gpsAcc&&gpsAcc>50))return;                       // 手動位置或精度太差的點不畫，避免軌跡亂跳
+  const l=myTrail[myTrail.length-1];if(l&&dist(l[1],l[2],lat,lon)<10)return;
+  const now=Date.now();myTrail.push([now,lat,lon]);
+  myTrail=myTrail.filter(p=>now-p[0]<40*60e3).slice(-300);          // 只留最近 40 分鐘、最多 300 點
+  try{sessionStorage.setItem('tt_mytrail',JSON.stringify(myTrail))}catch(e){}
+  drawMyTrail()}
+function drawMyTrail(){myLayer.clearLayers();const a=myTrail;if(a.length<2)return;const c='#1a73e8';
+  for(let i=1;i<a.length;i++){const f=i/(a.length-1),seg=[[a[i-1][1],a[i-1][2]],[a[i][1],a[i][2]]];
+    L.polyline(seg,{color:'#fff',weight:3+5*f,opacity:.25+.6*f}).addTo(myLayer);
+    L.polyline(seg,{color:c,weight:2+3*f,opacity:.2+.75*f}).addTo(myLayer)}
+  const e=a[a.length-1];L.circleMarker([e[1],e[2]],{radius:5,color:'#fff',weight:1,fillColor:c,fillOpacity:1}).addTo(myLayer)}
+drawMyTrail();
+function setMe(lat,lon,sp,gpsHdg){me={lat,lon};addMyTrail(lat,lon);speedMps=sp||0;updateHeading(lat,lon,speedMps,gpsHdg);
   if(!following&&ORI==='heading'&&hdg!=null&&speedMps>=2&&Date.now()-lastDragAt>30000){following=true;$('locbtn').classList.remove('on')}   // 在移動（約 7 km/h 以上）且 30 秒內沒手動拖地圖：自動回到跟隨，讓前方的路朝上
   const c=detectCity(lat,lon); if(c&&(!CITY||CITY.id!==c.id)){CITY=c; onCityChange(c);}
   if(!meMarker){meMarker=L.marker([lat,lon],{icon:L.divIcon({className:'',html:`<div class="me" style="background-image:url(${SPR.player})"></div>`,iconSize:[30,42],iconAnchor:[15,40]}),zIndexOffset:1000}).addTo(map);map.setView([lat,lon],16)}

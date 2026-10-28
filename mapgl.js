@@ -134,7 +134,9 @@
       this._ml.addControl(new ML.AttributionControl({ compact: true }), 'bottom-left');
       this._loaded = false; this._q = [];
       this._ml.on('load', () => { this._loaded = true; this._q.splice(0).forEach(f => f()); });
+      this._ml.on('resize', () => this._applyPad());   // 選單收合／展開讓地圖高度變了：留白要跟著重算，否則「我」會跑到畫面邊緣
     }
+    _applyPad() { const h = this._el.clientHeight; this._ml.setPadding({ top: this._pitchDeg > 0 ? Math.round(h * 0.42) : 0, bottom: 0, left: 0, right: 0 }); }
     _ready(fn) { if (this._loaded) fn(); else this._q.push(fn); }
     _corner(pos) {
       if (!this._corners[pos]) {
@@ -158,8 +160,7 @@
     getBearing() { return norm(360 - this._ml.getBearing()); }
     setPitch(deg) {                                                            // 傾斜：0=平面。傾斜時把「我」往畫面下方放（像 Google 地圖導航，前方看得比較遠）
       this._pitchDeg = deg;
-      const h = this._el.clientHeight;
-      this._ml.setPadding({ top: deg > 0 ? Math.round(h * 0.42) : 0, bottom: 0, left: 0, right: 0 });
+      this._applyPad();
       this._ml.easeTo({ pitch: deg, duration: 500 }); return this;
     }
     getPitch() { return this._pitchDeg; }
