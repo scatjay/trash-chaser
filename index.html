@@ -15,10 +15,10 @@
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,"Noto Sans TC","Microsoft JhengHei",sans-serif;display:flex;flex-direction:column}
 #map{flex:1 1 40%;min-height:200px}
-#panel{flex:0 0 auto;max-height:58%;overflow:auto;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px;background:var(--bg)}
+#panel{flex:0 0 auto;max-height:58%;overflow:auto;padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px;background:var(--bg)}
 .best{background:var(--card);border:2px solid var(--acc);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
-.big{font-size:1.9rem;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
-.tag{display:inline-block;font-size:.8rem;font-weight:700;padding:1px 9px;border-radius:99px}
+.big{font-size:clamp(1.5rem,6.4vw,2rem);text-wrap:balance;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
+.tag{display:inline-block;font-size:.88rem;font-weight:700;padding:1px 9px;border-radius:99px}
 .ok{background:var(--okbg);color:var(--ok)}.warn{background:var(--warnbg);color:var(--warn)}.bad{background:var(--badbg);color:var(--bad)}
 .row{display:flex;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-height:48px;cursor:pointer}
 .row-ic{flex:0 0 auto;image-rendering:pixelated}
@@ -33,18 +33,23 @@ body{background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,"Noto Sans TC
 #pitchbtn.on{color:#1a73e8}
 .leaflet-control-rotate{display:none!important}   /* 外掛自帶的旋轉鈕，改用右下角自己的 #oribtn */
 .row.sel{border-color:var(--acc);border-width:2px}
-.row small{color:var(--mut)}
+.row small{color:var(--mut);font-size:.9rem;line-height:1.35}
+.row b{font-size:1.05rem}
 button{font:inherit;min-height:48px;padding:0 16px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
 button.primary{background:var(--acc);color:var(--bg);border-color:var(--acc);font-weight:700}
 .bar{display:flex;gap:8px;flex-wrap:wrap}
-.note{font-size:.82rem;color:var(--mut)}
+.note{font-size:.92rem;line-height:1.4;color:var(--mut)}
 #alert{display:none;position:sticky;top:0;z-index:1000;padding:14px 16px;font-size:1.15rem;font-weight:700;line-height:1.35;background:var(--bad);color:#fff}
 #alert.on{display:block}
 #alert.hint{background:var(--warn)}
 #alert small{display:block;font-weight:400;font-size:.85rem;margin-top:2px}
 #alert a{color:#fff}
 
-.game{display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.game{display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 12px}
+#foot{font-size:.8rem}#who{font-size:.8rem}
+#citybar{background:var(--accbg);color:var(--acc);padding:8px 12px;border-radius:10px;font-size:.92rem;font-weight:600;line-height:1.4}
+#actions #navbtn{flex:2 1 auto;font-size:1.05rem}
+#actions #voice,#actions #relocate{flex:1 1 auto}
 .game b{font-size:1.25rem;font-variant-numeric:tabular-nums}
 .lvl{font-size:.82rem;color:var(--mut)}
 .bg{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:3px}.bg i{display:block;height:100%;background:var(--acc)}
@@ -61,6 +66,9 @@ body.ride #board{display:none}
 #gate{position:fixed;inset:0;z-index:5000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center}
 #gate img{width:96px}#gate h1{margin:0;font-size:1.6rem}#gate p{margin:0;color:var(--mut);max-width:34ch}#gate .err{color:var(--bad);font-weight:700}
 #who{font-size:.8rem;color:var(--mut)}
+#gate_qrbox{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:4px}#gate_qrbox[hidden]{display:none}
+#gate_qr{background:#fff;padding:16px;border-radius:10px;width:196px;height:196px;box-sizing:border-box;line-height:0}#gate_qr svg{width:100%;height:100%;display:block}
+#gate_qrcap{margin:0;font-size:.8rem}
 #modebar button{flex:1}
 #modebar button.on{background:var(--acc);color:var(--bg);border-color:var(--acc);font-weight:700}
 body.ride #game,body.ride #habit,body.ride #list,body.ride #best,body.ride .bar,body.ride #foot{display:none}
@@ -100,8 +108,8 @@ body[data-city=yilan]{--acc:#a6d26a;--accbg:#233414}}
 #cityinfo{flex:0 0 auto;background:var(--accbg);color:var(--ink);border-radius:10px;padding:8px 12px 10px;display:flex;flex-direction:column;gap:4px;overflow:hidden}
 #cityinfo .ct{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--acc)}
 #cityinfo .tl{font-size:.85rem;color:var(--mut)}
-#cityinfo .tip{font-size:.92rem;line-height:1.45}
-#cityinfo .tip small{color:var(--mut)}
+#cityinfo .tip{font-size:1.25rem;line-height:1.5;font-weight:500}
+#cityinfo .tip small{color:var(--mut);font-size:.78rem;font-weight:400;line-height:1.35;display:block;margin-top:4px}
 #cityinfo button{min-height:44px;padding:0 16px;font-size:.9rem;align-self:flex-start}
 .road{position:relative;height:30px;border-bottom:2px dashed var(--acc);opacity:.95;overflow:hidden}
 .road .sc{position:absolute;bottom:2px;font-size:1.15rem;line-height:1}
@@ -109,37 +117,43 @@ body[data-city=yilan]{--acc:#a6d26a;--accbg:#233414}}
 @keyframes drive{from{left:-40px}to{left:100%}}
 @media (prefers-reduced-motion:reduce){.road img{animation:none;left:calc(50% - 17px)}}
 
-#panelbar{position:sticky;top:0;z-index:6;display:flex;align-items:center;gap:10px;background:var(--bg);padding-bottom:2px;flex:0 0 auto}
-#panelbar button{min-height:44px;padding:0 14px;font-size:.9rem;flex:0 0 auto}
-#minisum{display:none;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:.95rem}
+#panelbar{position:sticky;top:-10px;margin-top:-10px;padding-top:10px;z-index:6;display:flex;flex-direction:column;gap:8px;background:var(--bg);padding-bottom:2px;flex:0 0 auto}
+#barrow2{display:flex;align-items:center;gap:8px}
+#panelbar button{min-height:48px;padding:0 14px;font-size:.95rem;flex:0 0 auto}
+#panelbar #logout{font-size:.85rem;padding:0 12px;margin-left:auto}   /* 登出：登入後才顯示；展開／收合都看得到 */
+#barnav{display:none;flex:1 1 auto;font-size:1.05rem;font-weight:700}
+#barnav:disabled{background:var(--card);border-color:var(--line);color:var(--mut);font-weight:500}
+#barnav.stop{background:var(--bad);border-color:var(--bad)}
+#minisum{display:none;font-weight:700;color:var(--ink);font-size:1.15rem;line-height:1.35;overflow-wrap:anywhere}
 body.collapsed #panel>*:not(#panelbar):not(#nav){display:none!important}   /* 收合：只留按鈕列＋導航指示（導航中不能被藏掉） */
 body.collapsed #minisum{display:block}
+body.collapsed #barnav{display:block}
 body.collapsed #panel{max-height:none;padding-top:6px;padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))}
 </style>
 </head>
 <body>
-<div id="gate"><img class="px" src="assets/truck_r.png" alt=""><h1>垃圾追追追</h1><p id="gate_msg">請先登入。</p><button id="gate_btn" class="primary" type="button" hidden>用 Google 登入</button></div>
+<div id="gate"><img class="px" src="assets/truck_r.png" alt=""><h1>垃圾追追追</h1><p id="gate_msg">請先登入。</p><button id="gate_btn" class="primary" type="button" hidden>用 Google 登入</button>
+  <div id="gate_qrbox" hidden><div id="gate_qr" aria-label="本網站網址的 QR code"></div><p class="note" id="gate_qrcap">用手機掃描，直接開啟本網站</p></div></div>
 <div id="alert" role="alert"></div>
 <div id="toast" role="status"></div>
 <div id="map" aria-label="地圖"></div>
 <div id="panel">
-  <div id="panelbar"><button id="panelbtn" type="button" aria-expanded="true">▾ 收合選單</button><span id="minisum"></span></div>
+  <div id="panelbar"><div id="minisum" role="status"></div><div id="barrow2"><button id="barnav" class="nav" type="button" disabled>沒有可導航的車</button><button id="panelbtn" type="button" aria-expanded="true">▾ 收合選單</button><button id="logout" type="button" hidden aria-label="登出 Google 帳號">登出</button></div></div>
   <div id="nav" aria-live="assertive"></div>
-  <div class="game" id="game"></div>
-  <div id="citybar" hidden style="background:var(--accbg);color:var(--acc);padding:8px 12px;border-radius:8px;font-size:.88rem;font-weight:600;margin-bottom:8px"></div>
   <div class="best" id="best"><span class="note">正在定位並讀取垃圾車資料…</span></div>
-  <div class="bar" id="modebar" role="group" aria-label="移動方式"><button id="m_moto" type="button">🛵 機車</button><button id="m_foot" type="button">🚶 步行</button></div>
-  <div class="bar">
-    <button id="voice" class="primary" aria-pressed="false">開啟語音</button>
+  <div class="bar" id="actions">
     <button id="navbtn" class="nav">開始導航</button>
+    <button id="voice" class="primary" aria-pressed="false">開啟語音</button>
     <button id="relocate">重新定位</button>
-    <button id="logout" type="button" hidden>登出</button>
     <button id="boardbtn" type="button" hidden>全台排行榜</button>
   </div>
+  <div class="bar" id="modebar" role="group" aria-label="移動方式"><button id="m_moto" type="button">🛵 機車</button><button id="m_foot" type="button">🚶 步行</button></div>
+  <div id="list" aria-live="polite"></div>
+  <div id="citybar" hidden></div>
+  <div class="game" id="game"></div>
   <div id="board" aria-live="polite"></div>
   <div id="cityinfo"></div>
   <div class="habit" id="habit"></div>
-  <div id="list" aria-live="polite"></div>
   <div class="note" id="foot"></div>
   <div id="who"></div>
 </div>
@@ -407,12 +421,13 @@ function navRender(tk,nx,dn){
     main=`${fmtD(d)}後　${insText(n)}`;sub=`全程剩 ${fmtD(NAV.route.distance)}・約 ${fmtT(NAV.route.duration)}・目的地：${NAV.dest.mode}（${tk.car}）`}
   else{main='路線規劃中…';sub=NAV.err||''}
   el.className='on';el.innerHTML=`<div class="ins">${main}</div><div class="sub">${sub}</div>${MODE==='moto'?'<div class="sub"><b>騎車請以語音為主，手機固定在手機架上，不要手持操作。</b>機車禁行路段請以現場標誌為準。</div>':''}<a class="gm" href="${gm}" target="_blank" rel="noopener"><button type="button">改用 Google 地圖導航到這個點</button></a>`}
-$('navbtn').onclick=async()=>{
+const _navOnClick=async()=>{
   if(!NAV.on){const tk=trucks.get(target);if(!tk||!me){toast('還沒有定位或車輛資料');return}
     NAV.on=true;$('navbtn').textContent='結束導航';voiceOn=true;$('voice').textContent='語音：開';
     try{wake=await navigator.wakeLock.request('screen')}catch(e){} say('開始導航，追'+tk.car);await planRoute(tk,'start')}
   else{NAV.on=false;NAV.route=null;NAV.dest=null;$('navbtn').textContent='開始導航';if(NAV.poly){map.removeLayer(NAV.poly);NAV.poly=null}if(NAV.flag){map.removeLayer(NAV.flag);NAV.flag=null}
     try{wake&&wake.release()}catch(e){}speechSynthesis.cancel();navRender()}};
+$('navbtn').onclick=async function(){await _navOnClick();syncBarNav()};   // 導航開始／結束後，收合列的按鈕文字一起換
 
 // ===== 全台排行榜：只上傳 暱稱／縣市／點數／次數／連續天數（不含座標、不含時間軌跡）=====
 let pushT=null;
@@ -512,10 +527,11 @@ function renderSchedule(){
     else{tag='今天沒班次';big='今天沒有垃圾車';mini='今天沒有垃圾車';
       line=w.next?`下一次：${w.next.k===1?'明天':'週'+DOWZH[w.next.w]} ${hhmm(w.next.x.st.arr)}・${esc(w.next.x.st.place)}（距你 ${fmtD(w.next.x.d)}）`:`班表上，這一帶（${fmtD(Math.max(5000,RANGE*1.7))}內）沒有任何班次。`}
     $('best').innerHTML=`<span class="tag warn">${tag}</span><div class="big">${big}</div><div>${line}</div>${note}`;
-    setMini(mini);$('list').innerHTML='';for(const [k,m] of markers){map.removeLayer(m);}markers.clear();trailLayer&&trailLayer.clearLayers();return;
+    setBar({kind:'none'});setMini(mini);$('list').innerHTML='';for(const [k,m] of markers){map.removeLayer(m);}markers.clear();trailLayer&&trailLayer.clearLayers();return;
   }
   const top=near.slice(0,8), cur=near.find(x=>x.st.place===target)||near[0];
   target=cur.st.place;
+  setBar({kind:'sched',href:'https://www.google.com/maps/dir/?api=1&travelmode='+(MODE==='moto'?'two-wheeler':'walking')+'&destination='+cur.st.lat+','+cur.st.lon});
   setMini(`${hhmm(cur.st.arr)} 到・${fmtD(cur.d)}・${cur.catch?'趕得上':'可能來不及'}`);
   $('best').innerHTML=`<span class="tag ${cur.catch?'ok':'warn'}">${cur.catch?'趕得上':'可能來不及'}</span>
     <div class="big">${hhmm(cur.st.arr)} 到・${fmtD(cur.d)}</div>
@@ -538,7 +554,7 @@ function render(){
   banner();
   if(!me){return}
   const rows=[...trucks.values()].map(assess).sort((a,b)=>a.score-b.score);   // 清單與地圖編號：依推薦分數（趕不趕得上優先，其次距離）
-  if(!rows.length){$('best').innerHTML=PULLSTAT.msg?`<span class="tag warn">暫無即時資料</span><div class="big">這個縣市暫無即時定位</div><small class="note">${PULLSTAT.msg}</small>`:`<span class="tag warn">現在沒有車</span><div class="big">現在沒有車在出勤</div><div><b>先別出發，不用追</b></div>${whenLiveHTML()}`;$('list').innerHTML='';setMini('現在沒有出勤中的車');return}
+  if(!rows.length){setBar({kind:'none'});$('best').innerHTML=PULLSTAT.msg?`<span class="tag warn">暫無即時資料</span><div class="big">這個縣市暫無即時定位</div><small class="note">${PULLSTAT.msg}</small>`:`<span class="tag warn">現在沒有車</span><div class="big">現在沒有車在出勤</div><div><b>先別出發，不用追</b></div>${whenLiveHTML()}`;$('list').innerHTML='';setMini('現在沒有出勤中的車');return}
   checkCatch(rows);
   const RANGE_M=MODE==='moto'?3000:1500;                                  // 太遠的車不推薦、不編號、不上色、不進清單（機車 3 公里、步行 1.5 公里內才算）
   const inR=rows.filter(r=>r.d<=RANGE_M), none=!inR.length;
@@ -556,6 +572,7 @@ function render(){
     <div class="big">${fmtD(cur.d)}・${verb()} ${fmtT(cur.walk)}</div>
     <div>${cur.eta?'預估車到 '+fmtT(cur.eta)+'，':''}<b>${cur.verdict}</b></div>
     <small class="note">${cur.t.car}・最後回報 ${fmtT(cur.age)}前</small>${manualPos?'<small class="note"><b>📍 位置是暫代／手動的，GPS 沒有在更新</b>：點一下地圖改成你現在的位置</small>':gpsLine()}`;
+  setBar(none?{kind:'none'}:{kind:'live'});
   setMini(none?'附近沒有垃圾車':`${cur.t.car===recommended?'最推薦':'選的這台'} ${fmtD(cur.d)}・${verb()} ${fmtT(cur.walk)}`);
   const top=rows.filter(r=>r.d<=RANGE_M).slice(0,8), rank=new Map(top.map((r,i)=>[r.t.car,i+1]));
   assignColors([...top.map(r=>r.t.car),...(target&&!top.some(r=>r.t.car===target)?[target]:[])]);
@@ -619,6 +636,14 @@ function applyCollapsed(){document.body.classList.toggle('collapsed',COLLAPSED);
   setTimeout(()=>map.invalidateSize(),250)}
 $('panelbtn').onclick=()=>{COLLAPSED=!COLLAPSED;applyCollapsed()};
 function setMini(s){const e=$('minisum');if(e)e.textContent=s||''}
+// 收合列的導航鈕：即時城市＝app 內導航到目前選定／最推薦的車；班表城市＝開 Google 地圖導航到最近一班的停靠點；沒車＝灰掉並由摘要說明今天的狀況
+let BARSTATE={kind:'none'};
+function syncBarNav(){const b=$('barnav');if(!b)return;
+  if(BARSTATE.kind==='live'){b.disabled=false;b.textContent=NAV.on?'■ 結束導航':'➤ 導航到這台';b.classList.toggle('stop',!!NAV.on)}
+  else if(BARSTATE.kind==='sched'){b.disabled=false;b.textContent='➤ 導航到這個點';b.classList.remove('stop')}
+  else{b.disabled=true;b.textContent='沒有可導航的車';b.classList.remove('stop')}}
+function setBar(s){BARSTATE=s;syncBarNav()}
+$('barnav').onclick=()=>{if(BARSTATE.kind==='live')$('navbtn').click();else if(BARSTATE.kind==='sched'&&BARSTATE.href)window.open(BARSTATE.href,'_blank','noopener')};
 applyCollapsed();
 renderOri();
 let manualPos=false, gpsAt=0, gpsAcc=0;
@@ -626,25 +651,26 @@ let manualPos=false, gpsAt=0, gpsAcc=0;
 // ===== 城市特色（小知識全部附出處；沒查證到的說法一律寫「相傳」或不放） =====
 const THEMES={
   tainan:{color:'#b5382a',icon:'⛩️',tagline:'府城・古都',scenes:['⛩️','🍜','🏯'],
-    tips:[{t:'2026 年 7 月，臺南有市民把金塊和皮包誤丟進清潔車，關廟區清潔隊通知永康焚化廠，把垃圾倒在平台上搜尋，約 10 分鐘就找回。',s:'自由時報 2026-07-10（已核對原文）'}]},
+    tips:[{t:'2026 年 7 月，有人把金塊和皮包誤丟進清潔車，10 分鐘就找回來。',s:'自由時報 2026-07-10（已核對原文）'}]},
   taipei:{color:'#1d5fb3',icon:'🏙️',tagline:'定時定點・聽到音樂就出門',scenes:['🏙️','🚇','🌧️'],
-    tips:[{t:'全台目前只有台北市採定時、定點收垃圾，垃圾車在每個點停靠 10 到 20 分鐘，其他縣市多半只停 2、3 分鐘。',s:'鏡週刊 2020-06（已核對原文，是當時的說法）'},
-          {t:'台北市衛生局長說，規定市民使用專用垃圾袋後，台北家庭垃圾減少了三分之二。',s:'商業周刊 2023-01-09（已核對原文，是官員說法）'},
-          {t:'首爾 1995 年起依量計費。以 1994 年為基準：1995 年垃圾量減少 8%、1996 年減少 11%；回收物占垃圾的比例從 20.5% 升到 29.3%。',s:'Seoul Solution 官方頁面（已核對原文，國外對照）'}]},
+    tips:[{t:'全台目前只有台北市定時定點收垃圾，每點停 10 到 20 分鐘。',s:'鏡週刊 2020-06（已核對原文，當時的說法）'},
+          {t:'台北改用專用垃圾袋後，家庭垃圾減少了三分之二。',s:'商業周刊 2023-01-09（已核對原文，官員說法）'},
+          {t:'首爾 1995 年起依量計費，1996 年垃圾量比 1994 年少 11%。',s:'Seoul Solution 官方頁面（已核對原文，國外對照）'}]},
   newtaipei:{color:'#b85400',icon:'🌉',tagline:'人口最多的直轄市',scenes:['🌉','🚌','🌊'],
-    tips:[{t:'林宥嘉的單曲〈垃圾寶貝〉（2023 年），前奏融合了〈少女的祈禱〉和〈給愛麗絲〉兩首垃圾車音樂，詞黃偉文、曲李拾壹。',s:'Marie Claire 2023-09（已核對原文）'}]},
+    tips:[{t:'林宥嘉〈垃圾寶貝〉的前奏，融合了兩首垃圾車音樂。',s:'Marie Claire 2023-09（已核對原文）'}]},
   taichung:{color:'#8a6100',icon:'☀️',tagline:'中部大城',scenes:['☀️','🥮','🎡'],
-    tips:[{t:'美國費城 2020 年上線 PickupPHL 互動地圖，用垃圾車上的 GPS，每 30 到 60 分鐘更新一次，市民可看車什麼時候經過自家那條街。',s:'費城市府新聞稿 2020-09-22（已核對原文，國外對照）'}]},
+    tips:[{t:'美國費城用垃圾車 GPS，每 30 到 60 分鐘更新一次車位。',s:'費城市府新聞稿 2020-09-22（已核對原文，國外對照）'}]},
   kaohsiung:{color:'#007488',icon:'⚓',tagline:'港都',scenes:['⚓','🚢','🌴'],
-    tips:[{t:'英國 Brighton & Hove 在垃圾車上裝了設備，市民可即時追蹤收運進度，漏收會由系統自動標出，不用自己通報；市府說據信是全英首創。',s:'Brighton & Hove 市府新聞 2025-12-03（已核對原文，國外對照）'}]},
+    tips:[{t:'英國 Brighton 的市民可即時看收運進度，漏收會自動標出。',s:'Brighton & Hove 市府新聞 2025-12-03（已核對原文，國外對照）'}]},
   keelung:{color:'#2f5d7c',icon:'🌧️',tagline:'雨港',scenes:['⚓','🌧️','🐟'],
-    tips:[{t:'日本松戶市說，垃圾分類和收運日規定很細，各市差別很大，要在指定那天早上 8:30 前把垃圾放到收集點。基隆的班表也有「回收日」，每條路線不是每天都收。',s:'松戶市官網（2026-05 更新，已核對原文，國外對照）；基隆部分來自市府開放資料'}]},
+    tips:[{t:'日本松戶市規定，要在收運日早上 8:30 前放好垃圾。',s:'松戶市官網 2026-05 更新（已核對原文，國外對照）'},
+          {t:'基隆的班表有「回收日」，不是每條路線每天都收。',s:'基隆市政府開放資料（班表欄位）'}]},
   yilan:{color:'#4a7a17',icon:'🏝️',tagline:'蘭陽平原',scenes:['⛰️','🌾','🏝️'],
-    tips:[{t:'宜蘭縣環保局公開了一萬兩千多筆表定停靠點，每個點依星期分開排，所以今天顯示的和明天不一樣。',s:'宜蘭縣環保局開放資料（本專案統計，非新聞）'}]},
+    tips:[{t:'宜蘭公開了 1.2 萬筆停靠點，每個點依星期分開排。',s:'宜蘭縣環保局開放資料（本專案統計，非新聞）'}]},
 };
-const COMMON=[{t:'台灣垃圾車的音樂由來沒有定論：有人說前衛生署署長許子秋聽女兒練琴覺得好聽，有人說是台灣第一位醫學博士杜聰明的點子，也有人說是德國進口車內建。〈少女的祈禱〉據說是向德國採購的車上原本就配有。',s:'商業周刊 2023-01-09（已核對原文，文中列出多種說法）'},
-  {t:'嘉義市春節期間停收垃圾、改設定點定時垃圾車，車一到民眾就追著跑，網友笑稱「夜半時分，喪屍出征」；報導也提醒車沒停妥就丟很危險。',s:'新頭殼 2021-02-14（已核對原文，是 2021 年春節）'},
-  {t:'彰化市清潔隊把民眾丟棄的玩偶掛在垃圾車和資源回收車上，有民眾寄手寫明信片說看到車經過心情就變好。',s:'聯合新聞網 2026-06-14（已核對原文）'}];
+const COMMON=[{t:'垃圾車的音樂是誰選的？至今沒有定論，有多種說法。',s:'商業周刊 2023-01-09（已核對原文）'},
+  {t:'嘉義春節的垃圾車一到，民眾追著跑，被戲稱「喪屍出征」。',s:'新頭殼 2021-02-14（已核對原文，是 2021 年春節）'},
+  {t:'彰化清潔隊把民眾丟的玩偶掛在垃圾車上，看了心情變好。',s:'聯合新聞網 2026-06-14（已核對原文）'}];
 let NEWS=[];   // data/news.json：每天由 tools/news_updater.py 更新的新聞標題（原標題、不改寫、附原文連結）
 function loadNews(){return fetch('data/news.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{NEWS=(j.items||[]).map(n=>({id:'n'+n.id,t:n.title,s:n.source+'・'+n.date,link:n.link}))}).catch(()=>{})}
 loadNews().then(()=>{if(CITY)renderCityInfo(CITY)});
@@ -678,7 +704,7 @@ function renderCityInfo(c,force){
   const sc=th.scenes.map((s,i)=>`<span class="sc" style="left:${14+i*30}%">${s}</span>`).join('');
   el.innerHTML=`<div class="ct"><span>${th.icon}</span><span>${c.name}</span><span class="tl">${th.tagline}</span></div>
     <div class="road" aria-hidden="true">${sc}<img src="${SPR.truck_r}" alt=""></div>
-    <div class="tip">${esc(tip.t)}<br><small>${tip.link?'新聞':'出處'}：${esc(tip.s)}${tip.link?` ・<a href="${esc(tip.link)}" target="_blank" rel="noopener">看原文</a>`:''}</small></div>
+    <div class="tip">${esc(tip.link&&tip.t.length>36?tip.t.slice(0,36)+'…':tip.t)}<br><small>${tip.link?'新聞':'出處'}：${esc(tip.s)}${tip.link?` ・<a href="${esc(tip.link)}" target="_blank" rel="noopener">看原文</a>`:''}</small></div>
     <button type="button" id="tipnext">再看一則</button>`;
   $('tipnext').onclick=()=>renderCityInfo(c,true);
 }
@@ -763,6 +789,12 @@ setMode(MODE); renderGame(); renderHabit(); setInterval(reminderTick,30000); $('
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
+// 登入頁 QR code：內容是「本網站網址」（不含查詢參數），讓人用手機掃描開啟。函式庫從 cdnjs 載入（qrcode-generator 1.4.4，MIT），在瀏覽器本機產生，不傳任何資料；載入失敗就不顯示。
+(function(){const box=document.getElementById('gate_qrbox');if(!box)return;
+  const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
+  s.onload=()=>{try{const url=location.origin+location.pathname.replace(/index\.html$/,'');const q=qrcode(0,'M');q.addData(url);q.make();
+    document.getElementById('gate_qr').innerHTML=q.createSvgTag({cellSize:4,margin:0,scalable:true});box.hidden=false;box.dataset.url=url}catch(e){}};
+  document.head.appendChild(s)})();
 // 登入閘門：Firebase Authentication（Google 登入）＋ 電子郵件白名單（auth-config.js）。
 // 注意：這是前端閘門，擋的是一般使用者；靜態網站的原始碼本身公開，白名單不等於伺服器端防護。
 (function(){
