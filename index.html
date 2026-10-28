@@ -759,6 +759,7 @@ const gpsText=()=>`📡 GPS 運作中：精度約 ±${gpsAcc} 公尺，${Math.ma
 function gpsLine(){return gpsAt?`<small class="note" id="gpsline">${gpsText()}</small>`:''}
 setInterval(()=>{const e=document.getElementById('gpsline');if(e&&gpsAt)e.textContent=gpsText()},2000);   // 只刷新這一行字，不重畫整個清單
 function setMe(lat,lon,sp,gpsHdg){me={lat,lon};speedMps=sp||0;updateHeading(lat,lon,speedMps,gpsHdg);
+  if(!following&&ORI==='heading'&&hdg!=null&&speedMps>=2&&Date.now()-lastDragAt>30000){following=true;$('locbtn').classList.remove('on')}   // 在移動（約 7 km/h 以上）且 30 秒內沒手動拖地圖：自動回到跟隨，讓前方的路朝上
   const c=detectCity(lat,lon); if(c&&(!CITY||CITY.id!==c.id)){CITY=c; onCityChange(c);}
   if(!meMarker){meMarker=L.marker([lat,lon],{icon:L.divIcon({className:'',html:`<div class="me" style="background-image:url(${SPR.player})"></div>`,iconSize:[30,42],iconAnchor:[15,40]}),zIndexOffset:1000}).addTo(map);map.setView([lat,lon],16)}
   else{meMarker.setLatLng([lat,lon]);if(following)map.panTo([lat,lon],{animate:true})}
@@ -772,7 +773,8 @@ function locate(){
     e=>fallback(e&&e.code===1?'定位被拒絕或此網址不允許定位':'暫時抓不到定位'),{enableHighAccuracy:true,maximumAge:5000});
 }
 map.on('click',e=>{if(manualPos)setMe(e.latlng.lat,e.latlng.lng,0)});
-map.on('dragstart',()=>{if(following){following=false;$('locbtn').classList.add('on')}});   // 只有使用者手動拖曳才算「滑開」；程式自己 setView／panTo 不算
+let lastDragAt=0;
+map.on('dragstart',()=>{lastDragAt=Date.now();if(following){following=false;$('locbtn').classList.add('on')}});   // 只有使用者手動拖曳才算「滑開」；程式自己 setView／panTo 不算
 $('locbtn').onclick=recenter;
 
 function setMode(m){MODE=m;try{localStorage.setItem('tt_mode',m)}catch(e){}
