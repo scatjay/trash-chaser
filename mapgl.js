@@ -68,7 +68,10 @@
       this._apply();
       this._m = new ML.Marker({ element: this._el, anchor: 'top-left', offset: [-this._anchor[0], -this._anchor[1]], pitchAlignment: 'viewport', rotationAlignment: 'viewport' })
         .setLngLat([this._ll.lng, this._ll.lat]).addTo(map._ml);
+      if (this._click) this._bindClick();
     }
+    on(ev, fn) { if (ev === 'click') { this._click = fn; if (this._el) this._bindClick(); } return this; }
+    _bindClick() { if (this._boundEl === this._el) return; this._boundEl = this._el; this._el.style.cursor = 'pointer'; this._el.addEventListener('click', e => { e.stopPropagation(); if (this._click) this._click(e); }); }
     setLatLng(p) { this._ll = ll(p); if (this._m) this._m.setLngLat([this._ll.lng, this._ll.lat]); return this; }
     getLatLng() { return { lat: this._ll.lat, lng: this._ll.lng }; }
     setIcon(ic) { this._icon = ic; if (this._el) this._apply(); return this; }
